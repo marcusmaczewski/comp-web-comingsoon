@@ -85,7 +85,7 @@ class FrmProFormsController {
 			wp_enqueue_script('jquery-chosen');
 		}
 
-		if ( isset( $frm_vars['dropzone_loaded'] ) && ! empty( $frm_vars['dropzone_loaded'] ) ) {
+		if ( ! empty( $frm_vars['dropzone_loaded'] ) ) {
 			wp_enqueue_script( 'dropzone' );
 		}
 
@@ -150,10 +150,17 @@ class FrmProFormsController {
 				$keep_styles  = array();
 			} else {
 				$keep_scripts = array(
-					'recaptcha-api', 'jquery-frm-rating', 'jquery-chosen',
-					'google_jsapi', 'dropzone', 'jquery-maskedinput',
+					'recaptcha-api',
+					'jquery-frm-rating',
+					'jquery-chosen',
+					'google_jsapi',
+					'dropzone',
+					'jquery-maskedinput',
 				);
-				$keep_styles = array( 'dashicons', 'jquery-theme' );
+				$keep_styles  = array(
+					'dashicons',
+					'jquery-theme',
+				);
 
 				if ( is_array( $keep ) ) {
 					$keep_scripts = array_merge( $keep_scripts, $keep );
@@ -161,12 +168,12 @@ class FrmProFormsController {
 			}
 
 			global $wp_scripts, $wp_styles;
-			$keep_scripts = apply_filters( 'frm_ajax_load_scripts', $keep_scripts );
+			$keep_scripts       = apply_filters( 'frm_ajax_load_scripts', $keep_scripts );
 			$registered_scripts = (array) $wp_scripts->registered;
 			$registered_scripts = array_diff( array_keys( $registered_scripts ), $keep_scripts );
 			self::mark_scripts_as_loaded( $registered_scripts );
 
-			$keep_styles = apply_filters( 'frm_ajax_load_styles', $keep_styles );
+			$keep_styles       = apply_filters( 'frm_ajax_load_styles', $keep_styles );
 			$registered_styles = (array) $wp_styles->registered;
 			$registered_styles = array_diff( array_keys( $registered_styles ), $keep_styles );
 			if ( ! empty( $registered_styles ) ) {
@@ -286,10 +293,14 @@ class FrmProFormsController {
     /**
      * Remove the noallow class on pro fields
 	 *
+	 * @param string $class_name
      * @return string
      */
-    public static function noallow_class() {
-        return '';
+    public static function noallow_class( $class_name ) {
+		if ( FrmProAddonsController::is_expired_outside_grace_period() ) {
+			return $class_name . ' frm_show_upgrade frm_show_expired_modal';
+		}
+		return '';
     }
 
 	/**
@@ -306,15 +317,12 @@ class FrmProFormsController {
 	}
 
 	public static function add_form_button_options( $values ) {
-        global $frm_vars;
-
-        $page_field = FrmProFormsHelper::has_field('break', $values['id'], true);
-
-        $post_types = FrmProAppHelper::get_custom_post_types();
-
-        $submit_conditions = $values['submit_conditions'];
-
-        require(FrmProAppHelper::plugin_path() . '/classes/views/frmpro-forms/add_form_button_options.php');
+		global $frm_vars;
+		$page_field        = FrmProFormsHelper::has_field( 'break', $values['id'], true );
+		$save_drafts       = ! empty( $values['save_draft'] );
+		$post_types        = FrmProAppHelper::get_custom_post_types();
+		$submit_conditions = $values['submit_conditions'];
+		require FrmProAppHelper::plugin_path() . '/classes/views/frmpro-forms/add_form_button_options.php';
     }
 
 	/**
@@ -392,7 +400,16 @@ class FrmProFormsController {
 		}
 	}
 
+	/**
+	 * Maybe add a link wrapper around field HTML to turn it into an active button.
+	 *
+	 * @param string $field_type
+	 * @return string
+	 */
 	public static function add_field_link( $field_type ) {
+		if ( FrmProAddonsController::is_expired_outside_grace_period() ) {
+			return $field_type;
+		}
 		return '<a href="#" class="frm_add_field">' . $field_type . '</a>';
     }
 
@@ -404,104 +421,98 @@ class FrmProFormsController {
         return ' class="field_type_list"';
     }
 
+	/**
+	 * @param array $atts
+	 * @param array $all_atts
+	 * @return void
+	 */
 	public static function formidable_shortcode_atts( $atts, $all_atts ) {
-        global $frm_vars, $wpdb;
+		global $frm_vars, $wpdb;
 
-        // reset globals
-        $frm_vars['readonly'] = $atts['readonly'];
-        $frm_vars['editing_entry'] = false;
-        $frm_vars['show_fields'] = array();
+		// reset globals
+		$frm_vars['readonly'] = $atts['readonly'];
+		$frm_vars['editing_entry'] = false;
+		$frm_vars['show_fields'] = array();
 
-		if ( ! is_array( $atts['fields'] ) ) {
-			$frm_vars['show_fields'] = explode( ',', $atts['fields'] );
-			FrmProFormState::set_initial_value( 'include_fields', $frm_vars['show_fields'] );
+		self::set_included_fields( $atts );
+
+		if ( $atts['entry_id'] && $atts['entry_id'] === 'last' ) {
+			$user_ID = get_current_user_id();
+			if ( $user_ID ) {
+				$frm_vars['editing_entry'] = FrmDb::get_var( $wpdb->prefix . 'frm_items', array( 'form_id' => $atts['id'], 'user_id' => $user_ID ), 'id', array( 'order_by' => 'created_at DESC' ) );
+			}
+		} elseif ( $atts['entry_id'] ) {
+			$frm_vars['editing_entry'] = $atts['entry_id'];
 		}
 
-        self::set_included_fields( $atts );
-
-        if ( $atts['entry_id'] && $atts['entry_id'] == 'last' ) {
-            $user_ID = get_current_user_id();
-            if ( $user_ID ) {
-				$frm_vars['editing_entry'] = FrmDb::get_var( $wpdb->prefix . 'frm_items', array( 'form_id' => $atts['id'], 'user_id' => $user_ID ), 'id', array( 'order_by' => 'created_at DESC' ) );
-            }
-        } else if ( $atts['entry_id'] ) {
-            $frm_vars['editing_entry'] = $atts['entry_id'];
-        }
-
-        foreach ( $atts as $unset => $val ) {
+		foreach ( $atts as $unset => $val ) {
 			if ( is_array( $all_atts ) && isset( $all_atts[ $unset ] ) ) {
 				unset( $all_atts[ $unset ] );
 			}
-            unset($unset, $val);
-        }
+			unset($unset, $val);
+		}
 
-        if ( is_array($all_atts) ) {
-            foreach ( $all_atts as $att => $val ) {
-                $_GET[ $att ] = $val;
-                unset($att, $val);
-            }
-        }
-    }
+		if ( is_array( $all_atts ) ) {
+			foreach ( $all_atts as $att => $val ) {
+				$_GET[ $att ] = $val;
+				unset( $att, $val );
+			}
+		}
+
+		self::maybe_set_page( $atts, $all_atts );
+	}
+
+	/**
+	 * Set page if the page attribute is set on a form shortcode.
+	 *
+	 * @since 5.5.3
+	 *
+	 * @param array $atts
+	 * @param array $all_atts
+	 * @return void
+	 */
+	private static function maybe_set_page( $atts, $all_atts ) {
+		if ( empty( $all_atts['page'] ) || empty( $atts['id'] ) ) {
+			return;
+		}
+
+		if ( is_numeric( $all_atts['page'] ) ) {
+			$page = absint( $all_atts['page'] );
+		} else {
+			$param_name = sanitize_text_field( $all_atts['page'] );
+			$page       = FrmAppHelper::simple_get( $param_name, 'absint', 0 );
+		}
+
+		if ( is_numeric( $atts['id'] ) ) {
+			$form_id = absint( $atts['id'] );
+		} else {
+			$form_key = sanitize_text_field( $atts['id'] );
+			$form_id  = $form_key ? FrmForm::get_id_by_key( $form_key ) : 0;
+		}
+
+		if ( $page <= 1 || ! $form_id ) {
+			return;
+		}
+
+		global $frm_vars;
+		if ( ! empty( $frm_vars['created_entries'] ) && ! empty( $frm_vars['created_entries'][ $form_id ] ) ) {
+			return;
+		}
+
+		FrmProEntriesController::maybe_set_page_from_attribute( $form_id, $page );
+	}
 
 	/**
 	 * If fields are excluded in the form shortcode, set the list of all fields
 	 * that should be included.
 	 *
 	 * @since 4.03.03
+	 *
+	 * @param array $atts
+	 * @return void
 	 */
 	public static function set_included_fields( $atts ) {
-		global $frm_vars;
-		if ( empty( $atts['exclude_fields'] ) ) {
-			self::add_included_parent( $atts );
-			return;
-		}
-
-		if ( ! is_array( $atts['exclude_fields'] ) ) {
-			$atts['exclude_fields'] = explode(',', $atts['exclude_fields']);
-		}
-
-		FrmProFormState::set_initial_value( 'exclude_fields', $atts['exclude_fields'] );
-
-		$fields = FrmField::get_all_for_form( (int) $atts['id'], '', 'include' );
-		$exclude_id  = array_filter( $atts['exclude_fields'], 'is_numeric' );
-		$exclude_key = array_filter( $atts['exclude_fields'], 'is_string' );
-
-		$include_ids = array();
-		foreach ( $fields as $field ) {
-			if ( ! in_array( $field->id, $exclude_id ) && ! in_array( $field->field_key, $exclude_key ) ) {
-				$include_ids[] = $field->id;
-			}
-			unset( $field );
-		}
-
-		$frm_vars['show_fields'] = $include_ids;
-	}
-
-	/**
-	 * If fields are included in the 'fields' option in the form shortcode,
-	 * include the parent section as well.
-	 *
-	 * @since 4.03.05
-	 */
-	private static function add_included_parent( $atts ) {
-		if ( empty( $atts['fields'] ) ) {
-			return;
-		}
-
-		global $frm_vars;
-
-		$field_ids = $frm_vars['show_fields'];
-		$fields    = FrmField::get_all_for_form( (int) $atts['id'] );
-
-		$include_id  = array_filter( $field_ids, 'is_numeric' );
-		$include_key = array_filter( $field_ids, 'is_string' );
-
-		foreach ( $fields as $field ) {
-			$included = in_array( $field->id, $include_id ) || in_array( $field->field_key, $include_key );
-			if ( $included && isset( $field->field_options['in_section'] ) && ! empty( $field->field_options['in_section'] ) && ! in_array( $field->field_options['in_section'], $frm_vars['show_fields'] ) ) {
-				$frm_vars['show_fields'][] = $field->field_options['in_section'];
-			}
-		}
+		FrmProGlobalVarsHelper::get_instance( true )->set_included_fields( $atts );
 	}
 
 	public static function add_form_classes( $form ) {
@@ -515,6 +526,11 @@ class FrmProFormsController {
 
 		if ( current_user_can( 'activate_plugins' ) && current_user_can( 'frm_edit_forms' ) ) {
 			echo ' frm-admin-viewing ';
+		}
+
+		$style = FrmStylesController::get_form_style( $form->id );
+		if ( is_object( $style ) && ! empty( $style->post_content['bg_image_id'] ) ) {
+			echo ' frm_with_bg_image ';
 		}
 
 		self::add_transitions( $form );
@@ -572,7 +588,7 @@ class FrmProFormsController {
     }
 
     public static function replace_shortcodes( $html, $form, $values = array() ) {
-        preg_match_all("/\[(if )?(deletelink|back_label|back_hook|back_button|draft_label|save_draft|draft_hook)\b(.*?)(?:(\/))?\](?:(.+?)\[\/\2\])?/s", $html, $shortcodes, PREG_PATTERN_ORDER);
+        preg_match_all("/\[(if )?(deletelink|back_label|back_hook|back_button|draft_label|save_draft|draft_hook|start_over|start_over_label|start_over_hook)\b(.*?)(?:(\/))?\](?:(.+?)\[\/\2\])?/s", $html, $shortcodes, PREG_PATTERN_ORDER);
 
 		if ( empty( $shortcodes[0] ) ) {
             return $html;
@@ -606,7 +622,7 @@ class FrmProFormsController {
                     }
 					break;
                 case 'draft_label':
-                    $replace_with = __( 'Save Draft', 'formidable-pro' );
+                    $replace_with = esc_html( ! empty( $form->options['draft_label'] ) ? $form->options['draft_label'] : __( 'Save Draft', 'formidable-pro' ) );
 					break;
                 case 'save_draft':
                     if ( ! is_user_logged_in() || ! isset($form->options['save_draft']) || $form->options['save_draft'] != 1 || ( isset($values['is_draft']) && ! $values['is_draft'] ) ) {
@@ -618,6 +634,22 @@ class FrmProFormsController {
 					break;
                 case 'draft_hook':
                     $replace_with = apply_filters('frm_draft_button_action', '', $form);
+                    break;
+
+				case 'start_over':
+					if ( empty( $form->options['start_over'] ) ) {
+						unset( $replace_with );
+					} else {
+						$html = str_replace( '[/if start_over]', '', $html );
+					}
+					break;
+
+				case 'start_over_label':
+					$replace_with = esc_html( ! empty( $form->options['start_over_label'] ) ? $form->options['start_over_label'] : __( 'Start Over', 'formidable-pro' ) );
+					break;
+
+				case 'start_over_hook':
+					$replace_with = apply_filters( 'frm_start_over_button_action', '', $form );
             }
 
 			if ( isset( $replace_with ) ) {
@@ -634,6 +666,21 @@ class FrmProFormsController {
         remove_filter('frm_replace_content_shortcodes', 'FrmFormsController::replace_content_shortcodes', 20);
 		return FrmProContent::replace_shortcodes( $content, $entry, $shortcodes );
     }
+
+	/**
+	 * @since 5.0.17
+	 *
+	 * @param string $class
+	 * @param string $style
+	 * @param array  $args
+	 * @return string
+	 */
+	public static function add_form_style_class( $class, $style, $args = array() ) {
+		if ( empty( $args['form'] ) || empty( $args['form']['submit_align'] ) || 'full' !== $args['form']['submit_align'] ) {
+			return $class;
+		}
+		return $class . ' frm_full_submit';
+	}
 
 	public static function conditional_options( $options ) {
         $cond_opts = array(
@@ -693,15 +740,26 @@ class FrmProFormsController {
     }
 
 	/**
+	 * Handles frm_pre_get_form action.
+	 *
+	 * @since 5.2.02
+	 *
+	 * @param stdClass $form
+	 * @return void
+	 */
+	public static function pre_get_form( $form ) {
+		self::add_submit_conditions_to_frm_vars( $form );
+		self::add_honeypot_globals_to_frm_vars( $form );
+	}
+
+	/**
 	 * Add submit conditions to $frm_vars for inclusion in Conditional Logic processing
 	 *
-	 * @param $atts
-	 * @param $form
+	 * @param stdClass $form
+	 * @return void
 	 */
 	public static function add_submit_conditions_to_frm_vars( $form ) {
-		if ( ! isset( $form->options['submit_conditions'] ) ||
-             ! isset( $form->options['submit_conditions']['hide_field'] ) ||
-             empty( $form->options['submit_conditions']['hide_field'] ) ) {
+		if ( ! isset( $form->options['submit_conditions'] ) || empty( $form->options['submit_conditions']['hide_field'] ) ) {
 			return;
 		}
 
@@ -720,6 +778,50 @@ class FrmProFormsController {
 		);
 
 		FrmProFieldsHelper::setup_conditional_fields( $submit_field );
+	}
+
+	/**
+	 * @since 5.2.02
+	 *
+	 * @param stdClass $form
+	 * @return void
+	 */
+	private static function add_honeypot_globals_to_frm_vars( $form ) {
+		global $frm_vars;
+
+		if ( ! array_key_exists( 'honeypot', $frm_vars ) ) {
+			$frm_vars['honeypot'] = array();
+		}
+
+		if ( class_exists( 'FrmHoneypot' ) ) {
+			$honeypot = isset( $form->options['honeypot'] ) ? $form->options['honeypot'] : 'basic';
+		} else {
+			$honeypot = 'strict';
+		}
+
+		$frm_vars['honeypot'][ $form->id ] = $honeypot;
+	}
+
+	/**
+	 * @param string $button
+	 * @param array  $args
+	 * @return string
+	 */
+	public static function maybe_hide_submit_button( $button, $args ) {
+		if ( ! is_array( $args ) || empty( $args['form'] ) ) {
+			return $button;
+		}
+
+		$form = $args['form'];
+		if ( ! isset( $form->options['submit_align'] ) || 'none' !== $form->options['submit_align'] ) {
+			return $button;
+		}
+
+		if ( ! FrmProFormsHelper::is_final_page( $form->id ) ) {
+			return $button;
+		}
+
+		return preg_replace( '/frm_button_submit/', 'frm_hidden frm_button_submit', $button, 1 );
 	}
 
 	/**
@@ -1046,6 +1148,9 @@ class FrmProFormsController {
 			if ( isset( $form->options['draft_msg'] ) ) {
 				$strings[] = 'draft_msg';
 			}
+			if ( ! empty( $form->options['draft_label'] ) ) {
+				$strings[] = 'draft_label';
+			}
 		}
 
 		if ( isset( $form->options['open_status'] ) && ! empty( $form->options['open_status'] ) ) {
@@ -1055,6 +1160,10 @@ class FrmProFormsController {
 		$strings[] = 'prev_value';
 		if ( isset( $form->options['rootline_titles_on'] ) && ! empty( $form->options['rootline_titles_on'] ) ) {
 			$strings[] = 'rootline_titles';
+		}
+
+		if ( ! empty( $form->options['start_over'] ) && isset( $form->options['start_over_label'] ) ) {
+			$strings[] = 'start_over_label';
 		}
 
 		return $strings;
@@ -1102,8 +1211,19 @@ class FrmProFormsController {
 	}
 
 	/* Trigger model actions */
-	public static function update_options( $options, $values ) {
-        return FrmProForm::update_options($options, $values);
+
+	/**
+	 * Modifies form options when updating or creating.
+	 *
+	 * @since 5.4 Added the third param.
+	 *
+	 * @param array $options Form options.
+	 * @param array $values  Form data.
+	 * @param bool  $update  Is form updating or creating. Default is `true`: form is updating.
+	 * @return array
+	 */
+	public static function update_options( $options, $values, $update = true ) {
+        return FrmProForm::update_options( $options, $values, $update );
     }
 
 	public static function save_wppost_actions( $settings, $action ) {
@@ -1129,6 +1249,118 @@ class FrmProFormsController {
 	public static function validate( $errors, $values ) {
         return FrmProForm::validate( $errors, $values );
     }
+
+	/**
+	 * @since 5.0.06
+	 *
+	 * @param string $button
+	 * @return string
+	 */
+	public static function frm_submit_button_html( $button ) {
+		FrmProFieldsHelper::replace_non_standard_formidable_shortcodes( array(), $button );
+		return $button;
+	}
+
+	/**
+	 * Adds options for new form values.
+	 *
+	 * @since 5.4
+	 *
+	 * @param array $values Form values.
+	 * @return array
+	 */
+	public static function add_new_form_values( $values ) {
+		if ( ! isset( $values['options'] ) ) {
+			$values['options'] = array();
+		}
+
+		$values['options']['start_over'] = 1;
+		return $values;
+	}
+
+	/**
+	 * Loads form via AJAX.
+	 *
+	 * @since 5.4
+	 *
+	 * @return void
+	 */
+	public static function load_form_ajax() {
+		check_ajax_referer( 'frm_ajax' );
+
+		$form = FrmAppHelper::get_post_param( 'form', 0, 'intval' );
+		if ( ! $form || ! FrmForm::getOne( $form ) ) {
+			wp_send_json_error();
+		}
+
+		$form_output  = FrmFormsController::show_form( $form );
+		$form_output  = str_replace( ' frm_logic_form ', '', $form_output );
+		$form_output .= self::get_form_ajax_extra_scripts();
+		wp_send_json_success( $form_output );
+	}
+
+	/**
+	 * Gets extra scripts when loading form via AJAX.
+	 *
+	 * @since 5.4.2
+	 *
+	 * @return string
+	 */
+	private static function get_form_ajax_extra_scripts() {
+		ob_start();
+		?>
+		<script type="text/javascript">
+			<?php FrmProFormsHelper::load_dropzone_js( $GLOBALS['frm_vars'] ); ?>
+		</script>
+		<?php
+		$output       = ob_get_clean();
+		$has_dropzone = strpos( $output, '__frmDropzone=' );
+		if ( $has_dropzone ) {
+			$output  = str_replace( '__frmDropzone=', '__frmAjaxDropzone=', $output );
+			$js_file = '<script src="' . FrmProAppHelper::plugin_url() . '/js/dropzone.min.js?ver=5.9.3" id="dropzone-js"></script>'; // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript
+			$output  = $js_file . $output;
+		}
+		return $output;
+	}
+
+	/**
+	 * @since 5.3.1
+	 *
+	 * @return string
+	 */
+	public static function list_class() {
+		return 'FrmProFormsListHelper';
+	}
+
+	/**
+	 * Add Application column to forms list table.
+	 *
+	 * @since 5.3.1
+	 *
+	 * @param array<string,string> $columns
+	 * @return array<string,string>
+	 */
+	public static function get_columns( $columns ) {
+		if ( ! is_callable( 'FrmAppHelper::on_form_listing_page' ) || ! FrmAppHelper::on_form_listing_page() ) {
+			return $columns;
+		}
+
+		$keys       = array_keys( $columns );
+		$name_index = array_search( 'name', $keys, true );
+		$key        = 'application';
+		$label      = __( 'Application', 'formidable-pro' );
+
+		if ( false !== $name_index ) {
+			// Place application column after name column.
+			$columns = array_slice( $columns, 0, $name_index + 1, true ) +
+					   array( $key => $label ) +
+					   array_slice( $columns, $name_index, null, true );
+		} else {
+			$columns[ $key ] = $label;
+		}
+
+		return $columns;
+	}
 
 	/**
 	 * @deprecated 4.0

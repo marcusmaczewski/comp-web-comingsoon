@@ -25,6 +25,16 @@ class FrmProField {
 					$field_data['field_options']['form_select'] = self::create_repeat_form( 0, array( 'parent_form_id' => $field_data['form_id'], 'field_name' => $field_data['name'] ) );
 				}
 				break;
+			case 'file':
+				$field_data['field_options']['restrict'] = 1;
+				if ( ! $field_data['field_options']['ftypes'] ) {
+					$field_data['field_options']['ftypes'] = array(
+						'jpg|jpeg|jpe' => 'image/jpeg',
+						'png'          => 'image/png',
+						'gif'          => 'image/gif',
+					);
+				}
+				break;
 		}
 		return $field_data;
 	}
@@ -60,21 +70,25 @@ class FrmProField {
 	}
 
 	public static function update( $field_options, $field, $values ) {
-
 		foreach ( $field_options['hide_field'] as $i => $f ) {
 			if ( empty( $f ) ) {
 				unset( $field_options['hide_field'][ $i ], $field_options['hide_field_cond'][ $i ] );
-				if ( isset($field_options['hide_opt']) && is_array($field_options['hide_opt']) ) {
+				if ( isset($field_options['hide_opt']) && is_array( $field_options['hide_opt'] ) ) {
 					unset( $field_options['hide_opt'][ $i ] );
 				}
 			}
 			unset($i, $f);
 		}
 
-		if ( $field->type == 'hidden' && isset($field_options['required']) && $field_options['required'] ) {
+		if ( $field->type === 'hidden' && ! empty( $field_options['required'] ) ) {
 			$field_options['required'] = false;
-		} else if ( $field->type == 'file' ) {
+		} elseif ( $field->type === 'file' ) {
 			self::format_mime_types( $field_options, $field->id );
+		}
+
+		$field_options['custom_currency'] = ! empty( $field_options['custom_currency'] ) ? 1 : 0;
+		if ( isset( $field_options['custom_decimals'] ) ) {
+			$field_options['custom_decimals'] = absint( $field_options['custom_decimals'] );
 		}
 
 		return $field_options;
@@ -94,6 +108,13 @@ class FrmProField {
 		}
 	}
 
+	/**
+	 * @param array $values
+	 * @param array $atts {
+	 *     @type bool $after True on the second run.
+	 * }
+	 * @return array
+	 */
 	public static function duplicate( $values, $atts = array() ) {
 		global $frm_duplicate_ids;
 
@@ -109,23 +130,27 @@ class FrmProField {
 		// switch out fields from calculation or default values
 		$switch_string = array( 'default_value', 'calc' );
 		foreach ( $switch_string as $opt ) {
-			if ( ( ! isset( $values['field_options'][ $opt ] ) || empty( $values['field_options'][ $opt ] ) ) &&
-				( ! isset( $values[ $opt ] ) || empty( $values[ $opt ] ) ) ) {
+			if ( empty( $values['field_options'][ $opt ] ) && empty( $values[ $opt ] ) ) {
 				continue;
 			}
 
 			$this_val = isset( $values[ $opt ] ) ? $values[ $opt ] : $values['field_options'][ $opt ];
-			if ( is_array($this_val) ) {
+			if ( is_array( $this_val ) ) {
 				continue;
 			}
 
-			$ids = implode( '|', array_keys($frm_duplicate_ids) );
+			$ids = FrmProFieldsHelper::filter_keys_for_regex( $this_val, array_keys( $frm_duplicate_ids ) );
+			if ( ! $ids ) {
+				continue;
+			}
+
+			$ids = implode( '|', $ids );
 
 			preg_match_all( '/\[(' . $ids . ')\]/s', $this_val, $matches, PREG_PATTERN_ORDER );
-			unset($ids);
+			unset( $ids );
 
-			if ( ! isset($matches[1]) ) {
-				unset($matches);
+			if ( ! isset( $matches[1] ) ) {
+				unset( $matches );
 				continue;
 			}
 
@@ -145,11 +170,11 @@ class FrmProField {
 				unset( $val );
 			}
 
-			unset($this_val, $matches);
+			unset( $this_val, $matches );
 		}
 
 		// switch out field ids in conditional logic
-		if ( isset( $values['field_options']['hide_field'] ) && ! empty( $values['field_options']['hide_field'] ) ) {
+		if ( ! empty( $values['field_options']['hide_field'] ) ) {
 			foreach ( array( 'hide_field_cond', 'hide_opt', 'hide_field' ) as $logic ) {
 				if ( isset( $values['field_options'][ $logic ] ) ) {
 					FrmProAppHelper::unserialize_or_decode( $values['field_options'][ $logic ] );
@@ -180,9 +205,7 @@ class FrmProField {
 		}
 
 		self::switch_out_form_select( $frm_duplicate_ids, $values );
-
 		self::switch_id_for_section_tracking_field_option( $frm_duplicate_ids, $values );
-
 		self::switch_ids_for_lookup_settings( $frm_duplicate_ids, $values );
 
 		return $values;

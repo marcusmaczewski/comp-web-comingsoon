@@ -292,7 +292,7 @@ class FrmProStatisticsController {
 	 *
 	 * @since 2.02.06
 	 * @param object $field
-	 * @param int $stat
+	 * @param int    $value
 	 * @return string
 	 */
 	private static function get_stars( $field, $value ) {
@@ -334,7 +334,7 @@ class FrmProStatisticsController {
 				$mean = ( $total / $count );
 				$stat = 0.0;
 				foreach ( $meta_values as $i ) {
-					$stat += pow( $i - $mean, 2 );
+					$stat += pow( floatval( $i ) - $mean, 2 );
 				}
 
 				if ( $count > 1 ) {
@@ -389,7 +389,18 @@ class FrmProStatisticsController {
 	 */
 	public static function calculate_median( $meta_values ) {
 		$count = count( $meta_values );
-		rsort( $meta_values );
+		usort(
+			$meta_values,
+			function( $a, $b ) {
+				if ( ! is_numeric( $a ) ) {
+					$a = 0;
+				}
+				if ( ! is_numeric( $b ) ) {
+					$b = 0;
+				}
+				return strnatcmp( $b, $a );
+			}
+		);
 
 		$middle_index = (int) floor( $count / 2 );
 

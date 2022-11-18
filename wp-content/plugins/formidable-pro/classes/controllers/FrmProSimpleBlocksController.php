@@ -19,7 +19,7 @@ class FrmProSimpleBlocksController {
 		wp_register_script(
 			'formidable-view-selector',
 			FrmProAppHelper::plugin_url() . '/js/frm_blocks.js',
-			array( 'wp-blocks', 'wp-i18n', 'wp-element', 'wp-components', 'wp-editor' ),
+			array( 'wp-blocks', 'wp-i18n', 'wp-element', 'wp-components', 'wp-block-editor' ),
 			$version,
 			true
 		);
@@ -158,6 +158,58 @@ class FrmProSimpleBlocksController {
 				'render_callback' => 'FrmSimpleBlocksController::simple_form_render',
 			)
 		);
+	}
+
+	/**
+	 * @since 5.5.2
+	 */
+	public static function before_simple_form_render() {
+		self::maybe_process_frm_set_get_shortcode();
+	}
+
+	/**
+	 * Fixes Pro issue #3853. [frm-set-get] shortcodes don't work if the form is in a Gutenberg block.
+	 *
+	 * @since 5.5.2
+	 *
+	 * @return void
+	 */
+	private static function maybe_process_frm_set_get_shortcode() {
+		global $post;
+		if ( ! is_object( $post ) || empty( $post->post_content ) ) {
+			return;
+		}
+
+		if ( ! self::should_process_frm_set_get_shortcode( $post->post_content ) ) {
+			return;
+		}
+
+		$pattern = get_shortcode_regex( array( 'frm-set-get', 'frm_set_get' ) );
+		preg_replace_callback(
+			"/$pattern/",
+			/**
+			 * Process frm-set-get/frm_set_get shortcode.
+			 *
+			 * @param array $match
+			 * @return void
+			 */
+			function( $match ) {
+				do_shortcode( $match[0] );
+			},
+			$post->post_content
+		);
+	}
+
+	/**
+	 * Do a soft check for the frm-set-get shortcode before trying to do a regex calblack.
+	 *
+	 * @since 5.5.2
+	 *
+	 * @param string $post_content
+	 * @return bool True if the value should be processed.
+	 */
+	private static function should_process_frm_set_get_shortcode( $post_content ) {
+		return false !== strpos( $post_content, '[frm-set-get' ) || false !== strpos( $post_content, '[frm_set_get' );
 	}
 
 	/**

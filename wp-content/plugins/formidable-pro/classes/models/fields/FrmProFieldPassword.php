@@ -8,6 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 3.0
  */
 class FrmProFieldPassword extends FrmFieldType {
+	use FrmProFieldAutocompleteField;
 
 	/**
 	 * @var string
@@ -25,10 +26,18 @@ class FrmProFieldPassword extends FrmFieldType {
 			'read_only'     => true,
 			'conf_field'    => true,
 			'prefix'        => true,
+			'autocomplete'  => true,
 		);
 
 		FrmProFieldsHelper::fill_default_field_display( $settings );
 		return $settings;
+	}
+
+	/**
+	 * @return array
+	 */
+	protected function get_filter_keys() {
+		return array( 'on', 'off', 'new-password', 'current-password' );
 	}
 
 	/**
@@ -172,10 +181,11 @@ class FrmProFieldPassword extends FrmFieldType {
 
 	/**
 	 * @since 3.03
+	 * @since 5.2.04 This method is public.
 	 *
 	 * @return array
 	 */
-	private function password_checks() {
+	public function password_checks() {
 		$checks = array(
 			'eight-char'   => array(
 				'label'    => __( 'Eight characters minimum', 'formidable-pro' ),
@@ -218,9 +228,10 @@ class FrmProFieldPassword extends FrmFieldType {
 
 	/**
 	 * @since 3.03
+	 * @since 5.2.04 This method is public.
 	 * @return boolean
 	 */
-	private function check_regex( $regex, $password ) {
+	public function check_regex( $regex, $password ) {
 		return preg_match( $regex, $password );
 	}
 }

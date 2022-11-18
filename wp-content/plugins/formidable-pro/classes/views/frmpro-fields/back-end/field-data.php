@@ -30,8 +30,8 @@ if ( ! isset( $field['data_type'] ) || $field['data_type'] == 'data' ) {
 		if ( $field['options'] ) {
 			foreach ( $field['options'] as $opt_key => $opt ) {
 				?>
-				<option value="<?php echo esc_attr( $opt_key ) ?>" <?php selected( $field['default_value'], $opt_key ) ?>>
-					<?php echo esc_html( $opt ) ?>
+				<option value="<?php echo esc_attr( $opt_key ); ?>" <?php selected( $field['default_value'], $opt_key ); ?>>
+					<?php echo esc_html( $opt ); ?>
 				</option>
 			<?php
 			}
@@ -51,9 +51,9 @@ if ( ! isset( $field['data_type'] ) || $field['data_type'] == 'data' ) {
 		foreach ( $field['options'] as $opt_key => $opt ) {
 			$checked = FrmAppHelper::check_selected( $checked_values, $opt_key ) ? ' checked="checked"' : '';
 			?>
-			<label for="<?php echo esc_attr( $field_name ) ?>">
-				<input type="checkbox" name="<?php echo esc_attr( $field_name ) ?>[]" id="<?php echo esc_attr( $field_name ) ?>" value="<?php echo esc_attr( $opt_key ) ?>" <?php echo $checked ?>>
-				<?php echo esc_html( $opt ) ?>
+			<label for="<?php echo esc_attr( $field_name ); ?>">
+				<input type="checkbox" name="<?php echo esc_attr( $field_name ); ?>[]" id="<?php echo esc_attr( $field_name ); ?>" value="<?php echo esc_attr( $opt_key ); ?>" <?php echo $checked; ?>>
+				<?php echo esc_html( $opt ); ?>
 			</label><br/>
 		<?php
 		}
@@ -64,8 +64,8 @@ if ( ! isset( $field['data_type'] ) || $field['data_type'] == 'data' ) {
 	if ( $field['options'] ) {
 		foreach ( $field['options'] as $opt_key => $opt ) {
 			?>
-			<input type="radio" name="<?php echo esc_attr( $field_name ) ?>" id="<?php echo esc_attr( $html_id . '-' . $opt_key ) ?>" value="<?php echo esc_attr( $opt_key ) ?>" <?php checked( $field['default_value'], $opt_key ) ?> />
-			<?php echo esc_html( $opt ) ?><br/>
+			<input type="radio" name="<?php echo esc_attr( $field_name ); ?>" id="<?php echo esc_attr( $html_id . '-' . $opt_key ); ?>" value="<?php echo esc_attr( $opt_key ); ?>" <?php checked( $field['default_value'], $opt_key ); ?> />
+			<?php echo esc_html( $opt ); ?><br/>
 			<?php
 		}
 	} else {
@@ -79,7 +79,7 @@ if ( isset( $field['post_field'] ) && $field['post_field'] == 'post_category' ) 
 ?>
 	<div class="clear"></div>
 	<div class="frm-show-click" style="margin-top:5px;">
-		<p class="howto"><?php echo FrmFieldsHelper::get_term_link( $field['taxonomy'] ) ?></p>
+		<p class="howto"><?php echo FrmFieldsHelper::get_term_link( $field['taxonomy'] ); ?></p>
 	</div>
 	<?php
 }

@@ -125,8 +125,6 @@ class FrmProFormState {
 				return 'description';
 			case 't':
 				return 'title';
-			case 'e':
-				return 'exclude_fields';
 			case 'i':
 				return 'include_fields';
 			case 'g':

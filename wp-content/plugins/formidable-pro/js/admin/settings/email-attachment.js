@@ -23,9 +23,9 @@
 				return;
 			}
 
-			mediaUploader = wp.media.frames.file_frame = wp.media( {
+			mediaUploader = wp.media.frames.file_frame = wp.media({
 				multiple: false
-			} );
+			});
 
 			mediaUploader.on( 'select', function() {
 				var icon,
@@ -52,10 +52,10 @@
 
 				button.hide();
 				$( '.frm_email_remove_attachment' ).show();
-			} );
+			});
 
 			mediaUploader.open();
-		} );
+		});
 
 		/**
 		 * Logic to remove an attachment.
@@ -78,6 +78,6 @@
 			container.find( '.frm_email_attachment_icon' ).html( '' );
 			button.hide();
 			$( '.frm_email_add_attachment' ).show();
-		} );
-	} );
-} )( jQuery );
+		});
+	});
+}( jQuery ) );

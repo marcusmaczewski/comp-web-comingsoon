@@ -195,6 +195,7 @@ DEFAULT_HTML;
 			}
 		}
 
+		$this->maybe_add_html_atts( $trigger, $html, array( 'tabindex' => '0', 'role' => 'button' ) );
 		$this->maybe_add_collapse_icon( $trigger, $html );
 		$this->maybe_hide_section( $html );
 
@@ -225,6 +226,47 @@ DEFAULT_HTML;
 
 			$html = preg_replace( $end_div, '', $html );
 		}
+	}
+
+	/**
+	 * Add the custom html attributes to collapsible section headings
+	 *
+	 * @since 5.3.2
+	 *
+	 * @param string $trigger
+	 * @param string $html, pass by reference
+	 * @param array $atts, key value pairs of html attributes.
+	 */
+	private function maybe_add_html_atts( $trigger, &$html, $atts ) {
+		if ( empty( $atts ) || ! is_array( $atts ) || ! $trigger ) {
+			return;
+		}
+
+		// matches h2 - h6 elements, from opening to closing tags
+		preg_match_all( "/\<h[2-6]\b(.*?)(?:(\/))?\>(.*?)(?:(\/))?\<\/h[2-6]>/su", $html, $headings, PREG_PATTERN_ORDER);
+
+		if ( empty( $headings[3] ) ) {
+			return;
+		}
+
+		foreach ( $atts as $att => $value ) {
+			// matches the atrribute if exists in the heading and remove it from html atts array.
+			if ( preg_match( "/{$att}=\"[^\"]*\"/", $headings[1][0] ) === 1 ) {
+				unset( $atts[ $att ] );
+			}
+		}
+
+		if ( ! $atts ) {
+			return;
+		}
+
+		$header_text        = reset( $headings[3] );
+		$search_header_text = '>' . $header_text . '<';
+		$old_header_html    = reset( $headings[0] );
+		$add_atts           = FrmAppHelper::array_to_html_params( $atts );
+		$new_header_html    = str_replace( $search_header_text, $add_atts . '>' . $header_text . '<', $old_header_html );
+
+		$html = str_replace( $old_header_html, $new_header_html, $html );
 	}
 
 	/**
@@ -266,16 +308,13 @@ DEFAULT_HTML;
 		$classes = '';
 
 		// If the top margin needs to be removed from a section heading
-		if ( $this->field['label'] == 'none' ) {
+		if ( $this->field['label'] === 'none' ) {
 			$classes .= ' frm_hide_section';
 		}
 
 		// If this is a repeating section that should be hidden with exclude_fields or fields shortcode, hide it
-		if ( $this->field['repeat'] ) {
-			global $frm_vars;
-			if ( isset( $frm_vars['show_fields'] ) && ! empty( $frm_vars['show_fields'] ) && ! in_array( $this->field['id'], $frm_vars['show_fields'] ) && ! in_array( $this->field['field_key'], $frm_vars['show_fields'] ) ) {
-				$classes .= ' frm_hidden';
-			}
+		if ( $this->field['repeat'] && ! FrmProGlobalVarsHelper::get_instance()->field_is_visible( $this->field ) ) {
+			$classes .= ' frm_hidden';
 		}
 
 		return $classes;

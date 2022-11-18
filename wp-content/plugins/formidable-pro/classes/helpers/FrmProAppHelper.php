@@ -368,28 +368,37 @@ class FrmProAppHelper {
 		return $ordered + $array;
 	}
 
+	/**
+	 * @param array $entry_ids
+	 * @param array $args
+	 * @return array
+	 */
 	public static function filter_where( $entry_ids, $args ) {
 		$defaults = array(
-			'where_opt' => false,
-			'where_is' => '=',
-			'where_val' => '',
-			'form_id' => false,
-			'form_posts' => array(),
+			'where_opt'   => false,
+			'where_is'    => '=',
+			'where_val'   => '',
+			'form_id'     => false,
+			'form_posts'  => array(),
 			'after_where' => false,
-			'display' => false,
-			'drafts' => 0,
-			'use_ids' => false,
+			'display'     => false,
+			'drafts'      => 0,
+			'use_ids'     => false,
 		);
 
-		$args = wp_parse_args($args, $defaults);
+		$args = wp_parse_args( $args, $defaults );
 
-		if ( ! (int) $args['form_id'] || ! $args['where_opt'] || ! is_numeric($args['where_opt']) ) {
+		if ( ! (int) $args['form_id'] || ! $args['where_opt'] || ! is_numeric( $args['where_opt'] ) ) {
 			return $entry_ids;
 		}
 
-		$where_field = FrmField::getOne($args['where_opt']);
+		$where_field = FrmField::getOne( $args['where_opt'] );
 		if ( ! $where_field ) {
 			return $entry_ids;
+		}
+
+		if ( false === $args['display'] ) {
+			$args['display'] = self::get_blank_display_object();
 		}
 
 		self::prepare_where_args($args, $where_field, $entry_ids);
@@ -397,7 +406,7 @@ class FrmProAppHelper {
 		$new_ids = array();
 		self::filter_entry_ids( $args, $where_field, $entry_ids, $new_ids );
 
-		unset($args['temp_where_is']);
+		unset( $args['temp_where_is'] );
 
 		self::prepare_post_filter( $args, $where_field, $new_ids );
 
@@ -409,6 +418,20 @@ class FrmProAppHelper {
 		}
 
 		return $entry_ids;
+	}
+
+	/**
+	 * Some code examples in the documentation include examples that access $args['display']->ID without checking if it is an object first.
+	 * As there might not always be a display set, the false default value is not safe enough as an attempt to read property "ID" on bool flags a warning.
+	 *
+	 * @since 5.0.14
+	 *
+	 * @return stdClass
+	 */
+	private static function get_blank_display_object() {
+		$display     = new stdClass();
+		$display->ID = 0;
+		return $display;
 	}
 
 	/**
@@ -724,6 +747,70 @@ class FrmProAppHelper {
 	public static function get_mime_type( $path ) {
 		$filetype = wp_check_filetype( $path );
 		return $filetype['type'] ? $filetype['type'] : 'application/octet-stream';
+	}
+
+	/**
+	 * @since 5.0.13
+	 *
+	 * @return string The base Google APIS url for the current version of jQuery UI.
+	 */
+	public static function jquery_ui_base_url() {
+		$url = 'http' . ( is_ssl() ? 's' : '' ) . '://ajax.googleapis.com/ajax/libs/jqueryui/' . FrmAppHelper::script_version( 'jquery-ui-core', '1.13.2' );
+		$url = apply_filters( 'frm_jquery_ui_base_url', $url );
+		return $url;
+	}
+
+	/**
+	 * @since 5.0.15
+	 *
+	 * @param array $values
+	 * @return array<array>
+	 */
+	public static function pull_ids_and_keys( $values ) {
+		$ids  = array();
+		$keys = array();
+		foreach ( $values as $field_id_or_key ) {
+			if ( is_numeric( $field_id_or_key ) ) {
+				$ids[] = (int) $field_id_or_key;
+			} else {
+				$keys[] = $field_id_or_key;
+			}
+		}
+		return array( $ids, $keys );
+	}
+
+	/**
+	 * Include svg images for pro.
+	 *
+	 * @since 5.3
+	 */
+	public static function include_svg() {
+		include_once self::plugin_path() . '/images/icons.svg';
+	}
+
+	/**
+	 * Get the list of capabilities for pro.
+	 *
+	 * @since 5.3.1
+	 *
+	 * @param array<string,string> $permissions
+	 * @return array<string,string>
+	 */
+	public static function add_pro_capabilities( $permissions ) {
+		$permissions['frm_edit_applications']     = __( 'Add/Edit Applications', 'formidable-pro' );
+		$permissions['frm_application_dashboard'] = __( 'Access Application Dashboard', 'formidable-pro' );
+		return $permissions;
+	}
+
+	/**
+	 * Checks if WP Cron is disabled.
+	 *
+	 * @since 5.4.1
+	 *
+	 * @return bool
+	 */
+	public static function is_cron_disabled() {
+		return defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON;
 	}
 
 	/**

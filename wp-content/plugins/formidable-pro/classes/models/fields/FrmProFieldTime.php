@@ -517,7 +517,7 @@ class FrmProFieldTime extends FrmFieldType {
 	private function format_time( $default, &$time ) {
 		if ( strlen( $time ) === 4 && substr( $time, 1, 1 ) === ':' ) {
 			$time = '0' . $time;
-		} elseif ( strlen( $time ) !== 5 || $time === '' ) {
+		} elseif ( ! preg_match( '/^(?:2[0-3]|[01][0-9]):[0-5][0-9]$/', $time ) || strlen( $time ) !== 5 || $time === '' ) {
 			$time = $default;
 		}
 	}

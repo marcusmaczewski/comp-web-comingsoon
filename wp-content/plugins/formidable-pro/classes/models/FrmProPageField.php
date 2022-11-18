@@ -6,12 +6,50 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class FrmProPageField {
 
+	/**
+	 * Hooks a function that shows progress/rootline bar into the appropriate action based on form setting.
+	 *
+	 * @param object $form
+	 */
+	public static function add_pagination_hook( $form ) {
+		if ( empty( $form->options['pagination_position'] ) ) {
+			add_action( 'frm_after_title', 'FrmProPageField::page_navigation' );
+			return;
+		}
+
+		$form_position = $form->options['pagination_position'];
+
+		switch ( $form_position ) {
+			case 'above_title':
+				add_action( 'frm_before_title', 'FrmProPageField::page_navigation' );
+				break;
+			case 'below_submit':
+				add_action( 'frm_after_submit_btn', 'FrmProPageField::page_navigation' );
+				break;
+			case 'above_submit':
+				add_action( 'frm_before_submit_btn', 'FrmProPageField::page_navigation' );
+				break;
+		}
+	}
+
 	public static function page_navigation( $atts ) {
+		$setting_action = array(
+			''             => 'frm_after_title',
+			'above_title'  => 'frm_before_title',
+			'below_submit' => 'frm_after_submit_btn',
+			'above_submit' => 'frm_before_submit_btn',
+		);
+
 		$atts = shortcode_atts( array( 'id' => false, 'form' => false ), $atts );
 		$form = $atts['form'];
 		if ( ! is_object( $form ) ) {
 			$form = FrmForm::getOne( $atts['id'] );
 			$atts['id'] = $form->id;
+		}
+
+		$position = isset( $form->options['pagination_position'] ) ? $form->options['pagination_position'] : '';
+		if ( current_action() !== $setting_action[ $position ] ) {
+			return;
 		}
 
 		$show_progress = FrmForm::get_option( array( 'form' => $form, 'option' => 'rootline', 'default' => '' ) );

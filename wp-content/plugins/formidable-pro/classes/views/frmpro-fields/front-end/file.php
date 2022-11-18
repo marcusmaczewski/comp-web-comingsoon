@@ -5,11 +5,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $is_multiple = FrmField::is_option_true( $field, 'multiple' );
 $is_required = FrmField::is_required( $field );
-$media_ids = $field['value'];
+$media_ids   = $field['value'];
 FrmProAppHelper::unserialize_or_decode( $media_ids );
 if ( $is_multiple ) {
 	$media_ids = array_map( 'trim', array_filter( (array) $media_ids, 'is_numeric' ) );
-} else if ( is_array( $media_ids ) ) {
+} elseif ( is_array( $media_ids ) ) {
 	$media_ids = reset( $media_ids );
 }
 $field['value'] = $media_ids;
@@ -20,8 +20,8 @@ if ( FrmField::is_read_only( $field ) ) {
 	// Read only file upload field shows the entry without an upload button
 	foreach ( (array) $media_ids as $media_id ) {
 ?>
-<input type="hidden" value="<?php echo esc_attr( $media_id ) ?>" name="<?php echo esc_attr( $input_name ); ?>" />
-<div class="frm_show_file_icon"><?php echo FrmProFieldsHelper::get_file_icon( $media_id ); ?></div>
+<input type="hidden" value="<?php echo esc_attr( $media_id ); ?>" name="<?php echo esc_attr( $input_name ); ?>" />
+<div class="frm_show_file_icon"><?php echo FrmProFieldsHelper::get_file_icon( $media_id ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
 <?php
 	}
 } else {
@@ -33,7 +33,7 @@ if ( FrmField::is_read_only( $field ) ) {
 
 	if ( $is_multiple ) {
 		$hidden_value = '';
-		$extra_atts = ' data-frmfile="' . esc_attr( $field['id'] ) . '" multiple="multiple" ';
+		$extra_atts   = ' data-frmfile="' . esc_attr( $field['id'] ) . '" multiple="multiple" ';
 	}
 
 	if ( $is_required ) {
@@ -45,26 +45,36 @@ if ( FrmField::is_read_only( $field ) ) {
 	$file_settings = $frm_vars['dropzone_loaded'][ $file_name ];
 
 ?>
-<input type="hidden" name="<?php echo esc_attr( $input_name ) ?>" <?php echo $required_att; ?> value="<?php echo esc_attr( $hidden_value ) ?>" data-frmfile="<?php echo esc_attr( $field['id'] ) ?>" />
+<input type="hidden" name="<?php echo esc_attr( $input_name ); ?>" <?php echo $required_att; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> value="<?php echo esc_attr( $hidden_value ); ?>" data-frmfile="<?php echo esc_attr( $field['id'] ); ?>" />
 
-<div class="frm_dropzone frm_<?php echo esc_attr( $file_settings['maxFiles'] == 1 ? 'single' : 'multi' ) ?>_upload frm_clearfix" id="<?php echo esc_attr( $file_name ) ?>_dropzone" role="group" <?php echo strip_tags( $aria ); ?>>
+<div class="frm_dropzone frm_<?php echo esc_attr( $file_settings['maxFiles'] == 1 ? 'single' : 'multi' ); ?>_upload frm_clearfix" id="<?php echo esc_attr( $file_name ); ?>_dropzone" role="group" <?php echo strip_tags( $aria ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<div class="fallback">
-		<input type="file" name="<?php echo esc_attr( $file_name . ( $is_multiple ? '[]' : '' ) ) ?>" id="<?php echo esc_attr( $html_id ) ?>" <?php echo $extra_atts; do_action( 'frm_field_input_html', $field ) ?> />
+		<input type="file" name="<?php echo esc_attr( $file_name . ( $is_multiple ? '[]' : '' ) ); ?>" id="<?php echo esc_attr( $html_id ); ?>"
+			<?php
+			echo $extra_atts; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			do_action( 'frm_field_input_html', $field );
+			?>
+			/>
 		<?php foreach ( $file_settings['mockFiles'] as $file ) { ?>
 			<div class="dz-preview dz-complete dz-image-preview frm_clearfix">
 				<div class="dz-image">
-					<img src="<?php echo esc_attr( $file['url'] ) ?>" alt="<?php echo esc_attr( $file['name'] ) ?>" />
+					<?php $src = FrmProFileField::get_safe_file_icon( $file ); ?>
+					<img src="<?php echo esc_attr( $src ); ?>" alt="<?php echo esc_attr( $file['name'] ); ?>" />
 				</div>
 				<div class="dz-column">
 					<div class="dz-details">
 						<div class="dz-filename">
 							<span data-dz-name="">
-								<a href="<?php echo esc_attr( $file['file_url'] ) ?>" target="_blank" rel="noopener"><?php echo esc_html( $file['name'] ) ?></a>
+								<?php if ( ! empty( $file['accessible'] ) ) { ?>
+									<a href="<?php echo esc_attr( $file['file_url'] ); ?>" target="_blank" rel="noopener"><?php echo esc_html( $file['name'] ); ?></a>
+								<?php } else { ?>
+									<?php echo esc_html( $file['name'] ); ?>
+								<?php } ?>
 							</span>
 						</div>
-						<a class="dz-remove frm_remove_link frm_icon_font frm_cancel1_icon" href="javascript:undefined;" data-frm-remove="<?php echo esc_attr( $field_name ) ?>" title="<?php esc_attr_e( 'Remove file', 'formidable-pro' ) ?>"></a>
+						<a class="dz-remove frm_remove_link frm_icon_font frm_cancel1_icon" href="javascript:undefined;" data-frm-remove="<?php echo esc_attr( $field_name ); ?>" title="<?php esc_attr_e( 'Remove file', 'formidable-pro' ); ?>"></a>
 						<?php if ( $is_multiple ) { ?>
-							<input type="hidden" name="<?php echo esc_attr( $field_name ); ?>[]" value="<?php echo esc_attr( $file['id'] ) ?>" />
+							<input type="hidden" name="<?php echo esc_attr( $field_name ); ?>[]" value="<?php echo esc_attr( $file['id'] ); ?>" />
 						<?php } ?>
 					</div>
 				</div>
@@ -77,7 +87,7 @@ if ( FrmField::is_read_only( $field ) ) {
 		<span class="frm_upload_text"><button type="button"><?php echo esc_html( $field['drop_msg'] ); ?></button></span>
 		<span class="frm_compact_text"><button type="button"><?php echo esc_html( $field['choose_msg'] ); ?></button></span>
 		<div class="frm_small_text">
-			<?php echo esc_html( sprintf( __( 'Maximum upload size: %sMB', 'formidable-pro' ), $file_settings['maxFilesize'] ) ) ?>
+			<?php echo esc_html( sprintf( __( 'Maximum upload size: %sMB', 'formidable-pro' ), $file_settings['maxFilesize'] ) ); ?>
 		</div>
 	</div>
 </div>

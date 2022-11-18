@@ -256,52 +256,70 @@ if ( ! empty( $vars ) && is_callable( 'FrmStylesHelper::output_vars' ) ) {
 
 /* Datepicker */
 
-#ui-datepicker-div{
+#ui-datepicker-div {
     display:none;
     z-index:999999 !important;
 }
 
-<?php $use_default_date = ( empty( $defaults['theme_css'] ) || 'ui-lightness' === $defaults['theme_css'] ); ?>
+<?php
+$use_default_date = ( empty( $defaults['theme_css'] ) || 'ui-lightness' === $defaults['theme_css'] );
+$datepicker_class = FrmProFieldsHelper::get_datepicker_class();
+?>
 
-.ui-datepicker .ui-datepicker-title select.ui-datepicker-month,
-.ui-datepicker .ui-datepicker-title select.ui-datepicker-year {
+.<?php echo esc_html( $datepicker_class ); ?> .ui-datepicker-title select.ui-datepicker-month,
+.<?php echo esc_html( $datepicker_class ); ?> .ui-datepicker-title select.ui-datepicker-year {
     width: <?php echo esc_html( $use_default_date ? '33' : '45' ); ?>% <?php echo esc_html( $important ); ?>;
 	background-color:#fff;
-	float:none;
+	padding: 5px 10px;
+	background-position-y: center;
+	background-position-x: right 5px;
+	line-height: 15px;
 }
 
-.ui-datepicker select.ui-datepicker-month{
+.<?php echo esc_html( $datepicker_class ); ?> select.ui-datepicker-month{
 	margin-right: 3px;
 }
 
-.ui-datepicker-month, .ui-datepicker-year{
+.<?php echo esc_html( $datepicker_class ); ?> .ui-datepicker-month, .<?php echo esc_html( $datepicker_class ); ?> .ui-datepicker-year {
 	max-width:100%;
 	max-height:2em;
 	padding:6px 10px;
 	-webkit-box-sizing:border-box;
 	-moz-box-sizing:border-box;
 	box-sizing:border-box;
+	display: inline;
+	color: <?php echo esc_html( $defaults['text_color'] ); ?>;
+}
+
+.<?php echo esc_html( $datepicker_class ); ?> span.ui-datepicker-month, .<?php echo esc_html( $datepicker_class ); ?> span.ui-datepicker-year {
+	color: <?php echo esc_html( $defaults['date_head_color'] ); ?>;
+	line-height: 25px;
+	font-weight: 600;
+}
+
+.<?php echo esc_html( $datepicker_class ); ?> .ui-datepicker-calendar {
+	margin: 0 !important;
 }
 
 <?php if ( $use_default_date ) { ?>
-.ui-datepicker .ui-widget-header,
-.ui-datepicker .ui-datepicker-header {
+.<?php echo esc_html( $datepicker_class ); ?> .ui-widget-header,
+.<?php echo esc_html( $datepicker_class ); ?> .ui-datepicker-header {
     background: <?php echo esc_html( $defaults['date_head_bg_color'] ); ?> !important;
 	color: <?php echo esc_html( $defaults['date_head_color'] ); ?> !important;
 }
 
-.ui-datepicker td.ui-datepicker-today{
+.<?php echo esc_html( $datepicker_class ); ?> td.ui-datepicker-today{
 	background: rgba(<?php echo esc_html( FrmStylesHelper::hex2rgb( $defaults['date_band_color'] ) ); ?>,0.15) !important;
 }
 
-.ui-datepicker td.ui-datepicker-current-day,
-.ui-datepicker td .ui-state-hover,
-.ui-datepicker thead {
+.<?php echo esc_html( $datepicker_class ); ?> td.ui-datepicker-current-day,
+.<?php echo esc_html( $datepicker_class ); ?> td .ui-state-hover,
+.<?php echo esc_html( $datepicker_class ); ?> thead {
     background: <?php echo esc_html( $defaults['date_band_color'] ); ?> !important;
 	color: <?php echo esc_html( $defaults['date_head_color'] ); ?> !important;
 }
 
-.ui-datepicker td.ui-datepicker-current-day .ui-state-default{
+.<?php echo esc_html( $datepicker_class ); ?> td.ui-datepicker-current-day .ui-state-default{
 	color: <?php echo esc_html( $defaults['date_head_color'] ); ?> !important;
 }
 <?php } ?>
@@ -328,6 +346,22 @@ if ( ! empty( $vars ) && is_callable( 'FrmStylesHelper::output_vars' ) ) {
 .with_frm_style .frm_scale input{
 	display:block;
 	margin:0;
+}
+
+.with_frm_style .frm_scale input[type=radio]:before {
+	content: '';
+	width: 13px;
+	height: 13px;
+	border-radius: 50%;
+	transform: scale(0);
+	transition: 120ms transform ease-in-out;
+	box-shadow: inset 10px 10px var(--text-color);
+	display: block;
+	margin: 2px 0 0 2px;
+}
+
+.with_frm_style .frm_scale input[type=radio]:checked:before {
+	transform: scale(1);
 }
 
 /* Star ratings */
@@ -849,6 +883,10 @@ $text_color = '#ffffff' . $important;
 	border-bottom-right-radius:0;
 }
 
+.with_frm_style .vertical_radio.frm_image_options .frm_image_option > label {
+    text-indent: 0;
+}
+
 .frm_show_images.frm_image_option_container {
 	display: inline-flex;
 	flex-wrap: nowrap;
@@ -960,6 +998,32 @@ input[type="checkbox"]:checked + .frm_image_option_container .frm_selected_check
 	margin-left: 0;
 	min-height: 0;
 	visibility: visible<?php echo esc_html( $important ); ?>; /* Overrides grid classes */
+}
+
+/**
+ * Background image
+ */
+.frm_with_bg_image .frm_form_fields > fieldset {
+	position: relative;
+}
+
+.frm_with_bg_image .frm_form_fields > fieldset:before {
+	content: ' ';
+	display: block;
+	position: absolute;
+	top: 0;
+	height: 100%;
+	background-position: 50% 0;
+	left: 0;
+	width: 100%;
+	background-image: var(--bg-image-url);
+	background-repeat: no-repeat;
+	background-size: cover;
+}
+
+.frm_with_bg_image .frm_form_fields > fieldset > *:not(.frm_screen_reader) {
+	z-index: 1;
+	position: relative;
 }
 
 /**
@@ -1165,6 +1229,12 @@ ul.frm_inline_list li{
 
 .frm_tiles h3{
 	margin-top:5px;
+}
+
+/* Submit Button Position */
+
+.frm_forms.frm_full_submit .frm_submit button {
+	width: 100%;
 }
 
 /* Slide in */

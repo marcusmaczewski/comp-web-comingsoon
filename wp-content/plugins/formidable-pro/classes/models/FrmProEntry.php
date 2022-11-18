@@ -12,10 +12,6 @@ class FrmProEntry {
 	 */
 	public static function admin_edit_link( $id ) {
 		$link = admin_url( 'admin.php?page=formidable-entries&frm_action=edit&id=' . absint( $id ) );
-		if ( is_callable( 'FrmAppHelper::maybe_full_screen_link' ) ) {
-			$link = FrmAppHelper::maybe_full_screen_link( $link );
-		}
-
 		return $link;
 	}
 
@@ -53,9 +49,9 @@ class FrmProEntry {
 
 			if ( $show_form ) {
 				$saved_message = isset( $form->options['success_msg'] ) ? $form->options['success_msg'] : $frm_settings->success_msg;
-				$saved_message = apply_filters( 'frm_content', $saved_message, $form, ( $entry_id ? $entry_id : false ) );
-				$message = wpautop( do_shortcode( $entry_id ? $saved_message : $frm_settings->failed_msg ) );
-				$message = '<div class="frm_message" id="message">' . $message . '</div>';
+				$saved_message = apply_filters( 'frm_content', $saved_message, $form, $entry_id );
+				$message       = wpautop( do_shortcode( $saved_message ) );
+				$message       = '<div class="frm_message" id="message">' . $message . '</div>';
 
 				$args['message'] = $message;
 				$args['function'] = 'show_form_after_single_editable_entry_submission';

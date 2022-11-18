@@ -51,6 +51,7 @@ class FrmProFieldData extends FrmFieldType {
 		return array(
 			'data_type' => 'select',
 			'restrict' => 0,
+			'option_order' => 'ascending',
 		);
 	}
 
@@ -92,7 +93,7 @@ class FrmProFieldData extends FrmFieldType {
 			$selected_field = FrmField::getOne( $field['form_select'] );
 			if ( $selected_field ) {
 				$selected_form_id = FrmProFieldsHelper::get_parent_form_id( $selected_field );
-				$fields = FrmField::get_all_for_form( $selected_form_id );
+				$fields           = FrmProFieldsController::get_field_selection_fields( $selected_form_id );
 			} else {
 				$selected_field = '';
 			}
@@ -255,7 +256,7 @@ class FrmProFieldData extends FrmFieldType {
 	 * @since 3.0
 	 *
 	 * @param array|string|int $value
-	 * @param array $ids
+	 * @param array            $atts
 	 *
 	 * @return array|string|int
 	 */
@@ -272,20 +273,24 @@ class FrmProFieldData extends FrmFieldType {
 
 			$target_field_id = $this->field->field_options['form_select'];
 			$target_field    = FrmField::getOne( $target_field_id );
-			$object          = FrmFieldFactory::get_field_object( $target_field );
-			$options         = $object->get_options( array() );
+			if ( FrmField::get_option( $target_field, 'post_field' ) ) {
+				$value = $this->get_post_field_import_value( $value, $target_field );
+			} else {
+				$object  = FrmFieldFactory::get_field_object( $target_field );
+				$options = $object->get_options( array() );
 
-			if ( is_array( $options ) ) {
-				$key = array_search( $value, $options );
+				if ( is_array( $options ) ) {
+					$key = array_search( $value, $options );
 
-				if ( false !== $key ) {
-					$where   = array(
-						'meta_value' => $key,
-						'field_id'   => $target_field_id,
-					);
-					$item_id = FrmDb::get_var( 'frm_item_metas', $where, 'item_id' );
-					if ( $item_id ) {
-						$value = $item_id;
+					if ( false !== $key ) {
+						$where   = array(
+							'meta_value' => $key,
+							'field_id'   => $target_field_id,
+						);
+						$item_id = FrmDb::get_var( 'frm_item_metas', $where, 'item_id' );
+						if ( $item_id ) {
+							$value = $item_id;
+						}
 					}
 				}
 			}
@@ -294,6 +299,100 @@ class FrmProFieldData extends FrmFieldType {
 		}
 
 		return $value;
+	}
+
+	/**
+	 * Gets post field import value.
+	 *
+	 * @since 5.0.02
+	 *
+	 * @param string|int $value The value before processing.
+	 * @param object     $target_field The target field object.
+	 * @return int|string
+	 */
+	protected function get_post_field_import_value( $value, $target_field ) {
+		$post_field = FrmField::get_option( $target_field, 'post_field' );
+
+		if ( 'post_custom' === $post_field ) {
+			$meta_key = FrmField::get_option( $target_field, 'custom_field' );
+
+			if ( ! $meta_key ) {
+				return $value;
+			}
+
+			if ( '_thumbnail_id' === $meta_key && ! is_numeric( $value ) ) {
+				$value = $this->get_attachment_id_from_url( $value, $target_field );
+			}
+
+			$item_id = $this->get_item_id_from_post_custom_field( $meta_key, $value );
+		} else {
+			$item_id = $this->get_item_id_from_post_field( $post_field, $value );
+		}
+
+		if ( $item_id ) {
+			return $item_id;
+		}
+
+		return $value;
+	}
+
+	/**
+	 * Gets attachment ID from URL.
+	 *
+	 * @since 5.0.02
+	 *
+	 * @param string   $value Attachment URL.
+	 * @param stdClass $field The file upload field.
+	 * @return string
+	 */
+	protected function get_attachment_id_from_url( $value, $field ) {
+		add_filter( 'frm_should_import_files', 'FrmProFileImport::allow_file_import' );
+		$value = FrmProFileImport::import_attachment( $value, $field );
+		remove_filter( 'frm_should_import_files', 'FrmProFileImport::allow_file_import' );
+		return $value;
+	}
+
+	/**
+	 * Gets item ID from the post custom field.
+	 *
+	 * @since 5.0.02
+	 *
+	 * @param string $meta_key The meta key.
+	 * @param string $value    The meta value.
+	 * @return int Return `0` if post not found.
+	 */
+	protected function get_item_id_from_post_custom_field( $meta_key, $value ) {
+		global $wpdb;
+
+		$sql = "SELECT items.id FROM {$wpdb->posts} AS posts
+INNER JOIN {$wpdb->prefix}frm_items as items ON posts.ID = items.post_id
+INNER JOIN {$wpdb->postmeta} AS postmeta ON posts.ID = postmeta.post_id
+WHERE postmeta.meta_key = %s and postmeta.meta_value = %s";
+
+		$item_id = $wpdb->get_var( $wpdb->prepare( $sql, $meta_key, $value ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		return intval( $item_id );
+	}
+
+	/**
+	 * Gets item ID from the post field.
+	 *
+	 * @since 5.0.02
+	 *
+	 * @param string $post_field The post field name.
+	 * @param string $value      The post field value.
+	 * @return int Return `0` if post not found.
+	 */
+	protected function get_item_id_from_post_field( $post_field, $value ) {
+		global $wpdb;
+
+		$post_field = esc_sql( $post_field );
+		$sql        = "SELECT items.id FROM {$wpdb->posts} AS posts
+INNER JOIN {$wpdb->prefix}frm_items AS items ON posts.ID = items.post_id WHERE posts.{$post_field} = %s";
+
+		$item_id = $wpdb->get_var( $wpdb->prepare( $sql, $value ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		return intval( $item_id );
 	}
 
 	/**

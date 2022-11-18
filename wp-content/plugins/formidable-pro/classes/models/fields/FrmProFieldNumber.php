@@ -8,18 +8,27 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 3.0
  */
 class FrmProFieldNumber extends FrmFieldNumber {
+	use FrmProFieldAutocompleteField;
 
 	protected function field_settings_for_type() {
 		$settings = parent::field_settings_for_type();
 
 		$settings['autopopulate'] = true;
-		$settings['calc'] = true;
-		$settings['unique'] = true;
-		$settings['read_only'] = true;
-		$settings['prefix']    = true;
+		$settings['calc']         = true;
+		$settings['unique']       = true;
+		$settings['read_only']    = true;
+		$settings['prefix']       = true;
+		$settings['autocomplete'] = true;
 
 		FrmProFieldsHelper::fill_default_field_display( $settings );
 		return $settings;
+	}
+
+	/**
+	 * @return array
+	 */
+	protected function get_filter_keys() {
+		return array( 'on', 'off', 'bday-day', 'bday-year', 'postal-code', 'transaction-amount', 'tel-extension' );
 	}
 
 	/**

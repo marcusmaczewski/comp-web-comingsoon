@@ -100,6 +100,16 @@ class FrmProSummaryValues {
 		} else {
 			$this->fields = FrmField::get_all_for_form( $this->form_id, '', 'exclude', 'exclude' );
 		}
+
+		/**
+		 * Allows changing fields in summary values.
+		 *
+		 * @since 5.0.15
+		 *
+		 * @param array $fields Fields array.
+		 * @param array $args   Includes `form_id`.
+		 */
+		$this->fields = apply_filters( 'frm_pro_fields_in_summary_values', $this->fields, array( 'form_id' => $this->form_id ) );
 	}
 
 	protected function init_field_values() {
@@ -128,9 +138,9 @@ class FrmProSummaryValues {
 
 		foreach ( $this->field_values as $field_id => $field_value ) {
 			$value = $field_value->get_posted_value();
-			if ( $field_value->is_repeater() || 'form' == $field_value->get_field_type() ) {
+			if ( $field_value->is_repeater() || 'form' === $field_value->get_field_type() ) {
 				$entry->metas[ $field_id ] = $this->fake_repeater_entry( $value, $field_value );
-			} elseif ( 'date' == $field_value->get_field_type() ) {
+			} elseif ( 'date' === $field_value->get_field_type() ) {
 				$entry->metas[ $field_id ] = FrmProAppHelper::maybe_convert_to_db_date( $value );
 			} else {
 				$entry->metas[ $field_id ] = $value;
@@ -155,7 +165,18 @@ class FrmProSummaryValues {
 					continue;
 				}
 
-				$child_entry->metas[ $child_field ] = $child_value;
+				$child_field = FrmField::getOne( $child_field );
+				if ( ! $child_field ) {
+					continue;
+				}
+
+				$child_field->temp_id = $child_field->id . '-' . $field_value->get_field_id() . '-' . $v;
+				if ( $this->is_excluded_type( $child_field ) ) {
+					continue;
+				}
+
+				$child_entry->metas[ $child_field->id ] = $child_value;
+				unset( $child_field, $child_value );
 			}
 			$children[ $v ] = $child_entry;
 		}
@@ -171,12 +192,12 @@ class FrmProSummaryValues {
 	 * @return stdClass
 	 */
 	private function base_entry( $form_id = 0 ) {
-		$entry = new stdClass();
+		$entry          = new stdClass();
 		$entry->post_id = 0;
-		$entry->id = 0;
-		$entry->ip = '';
+		$entry->id      = 0;
+		$entry->ip      = '';
 		$entry->form_id = $form_id;
-		$entry->metas = array();
+		$entry->metas   = array();
 		return $entry;
 	}
 
@@ -200,12 +221,12 @@ class FrmProSummaryValues {
 			 * children of the main form, or the page break and the parent of
 			 * the summary are siblings in the main form.
 			 */
-			if ( 'break' == $field->type ) {
+			if ( 'break' === $field->type ) {
 				if ( ! isset( $this->current_section ) && ! isset( $this->current_embedded_form ) ) {
 					// break is directly in the main form
 					$this->break_before_summary = $field;
 				}
-			} elseif ( 'summary' == $field->type ) {
+			} elseif ( 'summary' === $field->type ) {
 				// reset because of subsequent operations
 				$this->current_section       = null;
 				$this->current_embedded_form = null;
@@ -240,7 +261,7 @@ class FrmProSummaryValues {
 					}
 					break;
 				}
-			} else if ( $type == $field->type ) {
+			} elseif ( $type === $field->type ) {
 				$is_excluded = true;
 				break;
 			}
@@ -259,7 +280,7 @@ class FrmProSummaryValues {
 	}
 
 	private function field_val_is_blank( $field ) {
-		if ( in_array( $field->type, $this->no_blank_check_fields() ) ) {
+		if ( in_array( $field->type, $this->no_blank_check_fields(), true ) ) {
 			return false;
 		}
 
@@ -292,13 +313,13 @@ class FrmProSummaryValues {
 	private function set_current_container( $field ) {
 		if ( $field->type === 'divider' ) {
 			$this->current_section = $field;
-		} else if ( $field->type === 'end_divider' ) {
+		} elseif ( $field->type === 'end_divider' ) {
 			$this->current_section = null;
 		}
 
 		if ( $field->type === 'form' ) {
 			$this->current_embedded_form = $field;
-		} else if ( is_object( $this->current_embedded_form ) && $field->form_id != $this->current_embedded_form->field_options['form_select'] ) {
+		} elseif ( is_object( $this->current_embedded_form ) && $field->form_id != $this->current_embedded_form->field_options['form_select'] ) {
 			$this->current_embedded_form = null;
 		}
 	}
@@ -368,9 +389,9 @@ class FrmProSummaryValues {
 	private function is_self_or_parent_excluded_id( $field ) {
 		if ( in_array( $field->id, $this->excluded_ids ) ) {
 			$is_excluded = true;
-		} else if ( is_object( $this->current_section ) && in_array( $this->current_section->id, $this->excluded_ids ) ) {
+		} elseif ( is_object( $this->current_section ) && in_array( $this->current_section->id, $this->excluded_ids ) ) {
 			$is_excluded = true;
-		} else if ( is_object( $this->current_embedded_form ) && in_array( $this->current_embedded_form->id, $this->excluded_ids ) ) {
+		} elseif ( is_object( $this->current_embedded_form ) && in_array( $this->current_embedded_form->id, $this->excluded_ids ) ) {
 			$is_excluded = true;
 		} else {
 			$is_excluded = false;
@@ -389,9 +410,9 @@ class FrmProSummaryValues {
 	private function is_self_or_parent_excluded_type( $field ) {
 		if ( $this->is_excluded_type( $field ) ) {
 			$is_excluded = true;
-		} else if ( is_object( $this->current_section ) && $this->is_excluded_type( $this->current_section ) ) {
+		} elseif ( is_object( $this->current_section ) && $this->is_excluded_type( $this->current_section ) ) {
 			$is_excluded = true;
-		} else if ( is_object( $this->current_embedded_form ) && $this->is_excluded_type( $this->current_embedded_form ) ) {
+		} elseif ( is_object( $this->current_embedded_form ) && $this->is_excluded_type( $this->current_embedded_form ) ) {
 			$is_excluded = true;
 		} else {
 			$is_excluded = false;

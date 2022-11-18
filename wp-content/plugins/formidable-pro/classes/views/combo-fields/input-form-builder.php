@@ -12,13 +12,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 						<?php echo esc_html( FrmProComboFieldsController::get_dropdown_label( compact( 'field', 'key', 'sub_field' ) ) ); ?>
 					</option>
 					<?php foreach ( $sub_field['options'] as $option ) { ?>
-						<option value="<?php echo esc_attr( $option ) ?>" <?php selected( $field['value'][ $key ], $option ) ?>>
-							<?php echo esc_html( $option ) ?>
+						<option value="<?php echo esc_attr( $option ); ?>" <?php selected( $field['value'][ $key ], $option ); ?>>
+							<?php echo esc_html( $option ); ?>
 						</option>
 					<?php } ?>
 				</select>
 			<?php } else { ?>
-				<input type="<?php echo esc_attr( $sub_field['type'] ) ?>" id="<?php echo esc_attr( $html_id . '_' . $key ) ?>" value="<?php echo esc_attr( $field['value'][ $key ] ) ?>" <?php
+				<input type="<?php echo esc_attr( $sub_field['type'] ); ?>" id="<?php echo esc_attr( $html_id . '_' . $key ); ?>" value="<?php echo esc_attr( $field['value'][ $key ] ); ?>" <?php
 				if ( ! isset( $remove_names ) || ! $remove_names ) {
 					echo ' name="' . esc_attr( $field_name ) . '[' . esc_attr( $key ) . ']" ';
 				}

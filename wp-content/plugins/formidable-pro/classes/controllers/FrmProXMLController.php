@@ -35,28 +35,73 @@ class FrmProXMLController {
 		return $imported;
 	}
 
+	/**
+	 * @return string
+	 */
 	public static function csv_instructions_1() {
 		return __( 'Upload your Formidable XML or CSV file to import forms, entries, and views into this site. Note: If your imported form/entry/view key and creation date match an item on your site, that item will be updated. You cannot undo this action.', 'formidable-pro' );
 	}
 
+	/**
+	 * @return string
+	 */
 	public static function csv_instructions_2() {
 		return __( 'Choose a Formidable XML or any CSV file', 'formidable-pro' );
 	}
 
 	/**
+	 * Print the settings for importing CSV and XML files.
+	 *
+	 * @since 5.4.4
+	 *
 	 * @param array|object $forms
+	 * @return void
+	 */
+	public static function print_import_options( $forms ) {
+		self::csv_opts( $forms );
+		self::import_file_options();
+	}
+
+	/**
+	 * Print options for CSV and XML import.
+	 *
+	 * @param array|object $forms
+	 * @return void
 	 */
 	public static function csv_opts( $forms ) {
 		$csv_del = FrmAppHelper::get_param( 'csv_del', ',', 'get', 'sanitize_text_field' );
 		$form_id = FrmAppHelper::get_param( 'form_id', '', 'get', 'absint' );
-		$csv_files = FrmAppHelper::get_param( 'csv_files', '', 'get', 'absint' );
 
-		if ( 'object' == gettype( $forms ) ) {
+		if ( is_object( $forms ) ) {
 			// do_action resets an array with a single object in it
 			$forms = array( $forms );
 		}
 
-		include(FrmProAppHelper::plugin_path() . '/classes/views/xml/csv_opts.php');
+		include FrmProAppHelper::plugin_path() . '/classes/views/xml/csv_opts.php';
+	}
+
+	/**
+	 * Print the checkbox for importing files with the import.
+	 *
+	 * @since 5.4.4
+	 *
+	 * @return void
+	 */
+	private static function import_file_options() {
+		$csv_files = self::check_request_for_file_import_flag();
+		include FrmProAppHelper::plugin_path() . '/classes/views/xml/import_files.php';
+	}
+
+	/**
+	 * Check if the csv_files input is selected. This is used for determining if files should be imported or not.
+	 * As the downloading of files can be slow, this may need to be turned off for large imports to avoid timing out.
+	 *
+	 * @since 5.4.4
+	 *
+	 * @return int 1 or 0.
+	 */
+	private static function check_request_for_file_import_flag() {
+		return FrmAppHelper::get_param( 'csv_files', '', 'get', 'absint' ) ? 1 : 0;
 	}
 
 	public static function xml_export_types( $types ) {
@@ -208,6 +253,17 @@ class FrmProXMLController {
 		}
 
 		$fields = FrmField::get_all_for_form( $form_id, '', 'include', 'include' );
+
+		/**
+		 * Allows modifying fields for CSV import mapping.
+		 *
+		 * @since 5.4
+		 *
+		 * @param object[] $fields Array of field objects.
+		 * @param array    $args   Contains `form_id`, `context` and `meta`.
+		 */
+		$fields = apply_filters( 'frm_pro_fields_for_csv_mapping', $fields, compact( 'form_id' ) );
+
 		include FrmProAppHelper::plugin_path() . '/classes/views/xml/map_csv_fields.php';
 	}
 
@@ -285,5 +341,120 @@ class FrmProXMLController {
 	public static function import_default_templates( $files ) {
 		_deprecated_function( __METHOD__, '3.06' );
 		return $files;
+	}
+
+	/**
+	 * @since 5.0.06
+	 *
+	 * @param array $headings
+	 * @return array
+	 */
+	public static function export_csv_headings( $headings ) {
+		if ( ! self::exporting_specific_columns_only() ) {
+			return $headings;
+		}
+		return self::sort_csv_headings( $headings );
+	}
+
+	/**
+	 * @since 5.0.06
+	 *
+	 * @param array $headings
+	 * @return array
+	 */
+	private static function sort_csv_headings( $headings ) {
+		$custom_columns  = self::get_custom_columns();
+		$sorted_headings = array();
+		foreach ( $custom_columns as $column ) {
+			if ( array_key_exists( $column, $headings ) ) {
+				$sorted_headings[ $column ] = $headings[ $column ];
+			} elseif ( in_array( $column, array( 'comment', 'comment_user_id', 'comment_created_at' ), true ) ) {
+				$sorted_headings += self::pull_series_of_headings( $headings, $column );
+			} else {
+				$sorted_headings += self::pull_series_of_headings( $headings, $column, '[', ']' );
+			}
+		}
+		return $sorted_headings;
+	}
+
+	/**
+	 * @since 5.0.06
+	 *
+	 * @param array  $headings
+	 * @param string $column
+	 * @param string $index_prefix
+	 * @param string $index_suffix
+	 */
+	private static function pull_series_of_headings( $headings, $column, $index_prefix = '', $index_suffix = '' ) {
+		$index           = 0;
+		$sorted_headings = array();
+		while ( 1 ) {
+			$key = $column . $index_prefix . $index . $index_suffix;
+			if ( ! array_key_exists( $key, $headings ) ) {
+				break;
+			}
+			$sorted_headings[ $key ] = $headings[ $key ];
+			++$index;
+		}
+		return $sorted_headings;
+
+	}
+
+	/**
+	 * @since 5.0.06
+	 *
+	 * @param array $csv_fields
+	 * @return array
+	 */
+	public static function fields_for_csv_export( $csv_fields ) {
+		if ( ! self::exporting_specific_columns_only() ) {
+			return $csv_fields;
+		}
+		$ids = self::get_custom_field_ids();
+		return array_filter(
+			$csv_fields,
+			function( $field ) use ( $ids ) {
+				return in_array( $field->id, $ids, true );
+			}
+		);
+	}
+
+	/**
+	 * @since 5.0.06
+	 *
+	 * @return bool
+	 */
+	private static function exporting_specific_columns_only() {
+		return isset( $_GET['columns'] );
+	}
+
+	/**
+	 * @since 5.0.06
+	 *
+	 * @return array
+	 */
+	private static function get_custom_field_ids() {
+		$field_ids      = array();
+		$custom_columns = self::get_custom_columns();
+		foreach ( $custom_columns as $key ) {
+			if ( is_numeric( $key ) ) {
+				$field_ids[] = $key;
+			} elseif ( '_label' === substr( $key, -6 ) ) {
+				$stripped_key = str_replace( '_label', '', $key );
+				if ( is_numeric( $stripped_key ) ) {
+					$field_ids[] = $stripped_key;
+				}
+			}
+		}
+		return $field_ids;
+	}
+
+	/**
+	 * @since 5.0.06
+	 *
+	 * @return array
+	 */
+	private static function get_custom_columns() {
+		return explode( ',', FrmAppHelper::get_param( 'columns', '', 'get', 'sanitize_text_field' ) );
 	}
 }

@@ -17,9 +17,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 	if ( ! isset( $cf_keys ) || empty( $cf_keys ) ) {
 	?>
-	<input type="text" value="<?php echo esc_attr( $echo ? $custom_data['meta_name'] : '' ) ?>" name="<?php echo esc_attr( $action_control->get_field_name( 'post_custom_fields' ) ) ?>[<?php echo esc_attr( $sanitized_name ) ?>][meta_name]" class="frm_enternew" />
+	<input type="text" value="<?php echo esc_attr( $echo ? $custom_data['meta_name'] : '' ) ?>" name="<?php echo esc_attr( $action_control->get_field_name( 'post_custom_fields' ) ) ?>[<?php echo esc_attr( $sanitized_name ) ?>][meta_name]" class="frm_enternew frm_custom_field_key" />
     <?php } else { ?>
-    <select name="<?php echo esc_attr( $action_control->get_field_name( 'post_custom_fields' ) ) ?>[<?php echo esc_attr( $sanitized_name ) ?>][meta_name]" class="frm_cancelnew">
+    <select name="<?php echo esc_attr( $action_control->get_field_name( 'post_custom_fields' ) ) ?>[<?php echo esc_attr( $sanitized_name ) ?>][meta_name]" class="frm_cancelnew frm_custom_field_key">
 		<option value=""><?php esc_html_e( '&mdash; Select &mdash;' ); ?></option>
 		<?php foreach ( $cf_keys as $cf_key ) { ?>
     	<option value="<?php echo esc_attr($cf_key) ?>"><?php echo esc_html($cf_key) ?></option>
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     	}
         ?>
     </select>
-	<input type="text" class="hide-if-js frm_enternew" name="<?php echo esc_attr( $action_control->get_field_name( 'post_custom_fields' ) ) ?>[<?php echo esc_attr( $sanitized_name ) ?>][custom_meta_name]" value="" />
+	<input type="text" class="hide-if-js frm_enternew frm_custom_field_key" name="<?php echo esc_attr( $action_control->get_field_name( 'post_custom_fields' ) ) ?>[<?php echo esc_attr( $sanitized_name ) ?>][custom_meta_name]" value="" />
     <?php } ?>
 
     <?php if ( isset( $cf_keys ) && ! empty( $cf_keys ) ) { ?>

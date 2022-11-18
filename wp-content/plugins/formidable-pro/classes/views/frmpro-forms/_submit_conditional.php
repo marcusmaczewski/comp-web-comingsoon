@@ -9,13 +9,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<option value="show" <?php selected( $submit_conditions['show_hide'], 'show' ); ?>>
 					<?php esc_html_e( 'Show submit button', 'formidable-pro' ); ?>
 				</option>
-				<option value="hide" <?php selected( $submit_conditions['show_hide'], 'hide' ) ?>>
+				<option value="hide" <?php selected( $submit_conditions['show_hide'], 'hide' ); ?>>
 					<?php esc_html_e( 'Hide submit button', 'formidable-pro' ); ?>
 				</option>
 				<option value="enable" <?php selected( $submit_conditions['show_hide'], 'enable' ); ?>>
 					<?php esc_html_e( 'Enable submit button', 'formidable-pro' ); ?>
 				</option>
-				<option value="disable" <?php selected( $submit_conditions['show_hide'], 'disable' ) ?>>
+				<option value="disable" <?php selected( $submit_conditions['show_hide'], 'disable' ); ?>>
 					<?php esc_html_e( 'Disable submit button', 'formidable-pro' ); ?>
 				</option>
 			</select>

@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 ?>
 <div id="frm_logic_<?php echo esc_attr( $field['id'] . '_' . $meta_name ); ?>" class="frm_logic_row">
-<select name="field_options[hide_field_<?php echo esc_attr( $field['id'] ) ?>][]" class="frm_logic_field_opts" data-type="<?php echo esc_attr( $field['type'] ) ?>">
+<select name="field_options[hide_field_<?php echo esc_attr( $field['id'] ); ?>][]" class="frm_logic_field_opts" data-type="<?php echo esc_attr( $field['type'] ); ?>">
 	<option value=""><?php esc_html_e( '&mdash; Select &mdash;' ); ?></option>
     <?php
     $sel = false;
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
             $sel = true;
 		}
     ?>
-	<option value="<?php echo esc_attr( $ff->id ) ?>" <?php selected( $ff->id, $hide_field ) ?>>
+	<option value="<?php echo esc_attr( $ff->id ); ?>" <?php selected( $ff->id, $hide_field ); ?>>
 		<?php echo esc_html( $ff->name ); ?>
 	</option>
     <?php } ?>
@@ -26,13 +26,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 if ( $hide_field && ! $sel ) {
 //remove conditional logic if the field doesn't exist
 ?>
-<script type="text/javascript">jQuery(document).ready(function(){frmAdminBuild.triggerRemoveLogic(<?php echo (int) $field['id'] ?>, '<?php echo esc_attr( $meta_name ) ?>');});</script>
+<script type="text/javascript">jQuery(document).ready(function(){frmAdminBuild.triggerRemoveLogic(<?php echo (int) $field['id']; ?>, '<?php echo esc_attr( $meta_name ); ?>');});</script>
 <?php
 }
 $field['hide_field_cond'][ $meta_name ] = isset( $field['hide_field_cond'][ $meta_name ] ) ? htmlspecialchars_decode( $field['hide_field_cond'][ $meta_name ] ) : '';
 ?>
 
-<select name="field_options[hide_field_cond_<?php echo esc_attr( $field['id'] ) ?>][]" class="auto_width">
+<select name="field_options[hide_field_cond_<?php echo esc_attr( $field['id'] ); ?>][]" class="auto_width">
 	<option value="==" <?php selected( $field['hide_field_cond'][ $meta_name ], '==' ); ?>>
 		<?php esc_html_e( 'equals', 'formidable-pro' ); ?>
 	</option>

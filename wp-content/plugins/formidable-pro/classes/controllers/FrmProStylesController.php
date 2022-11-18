@@ -13,21 +13,37 @@ class FrmProStylesController extends FrmStylesController {
 
 		add_action( 'frm_sample_style_form', 'FrmProStylesController::append_style_form' );
 		add_action( 'frm_style_switcher_heading', 'FrmProStylesController::style_dropdown' );
-		add_filter('frm_style_head', 'FrmProStylesController::maybe_new_style');
-		add_filter('frm_style_action_route', 'FrmProStylesController::pro_route');
+		add_filter( 'frm_style_head', 'FrmProStylesController::maybe_new_style' );
+		add_filter( 'frm_style_action_route', 'FrmProStylesController::pro_route' );
 		add_action( 'frm_style_settings_top', 'FrmProStylesController::add_new_button' );
+		add_action( 'admin_enqueue_scripts', 'FrmProAppController::load_style_manager_js_assets' );
+		add_action( 'frm_style_settings_input_atts', 'FrmProStylesController::echo_style_settings_input_atts' );
+		add_action( 'frm_style_settings_general_section_after_background', 'FrmProStylesController::echo_bg_image_settings', 10 );
+		add_action( 'frm_style_settings_general_section_after_background', 'FrmProStylesController::echo_additional_background_image_settings', 20 );
+
+		self::admin_css();
+	}
+
+	private static function admin_css() {
+		if ( FrmAppHelper::doing_ajax() ) {
+			return;
+		}
+
+		$version = FrmAppHelper::plugin_version();
+		wp_register_style( 'formidable-pro-style-settings', FrmProAppHelper::plugin_url() . '/css/settings/style-settings.css', array(), $version );
+		wp_enqueue_style( 'formidable-pro-style-settings' );
 	}
 
 	public static function add_style_boxes( $boxes ) {
 		$add_boxes = array(
-			'section-fields' => __( 'Section Fields', 'formidable-pro' ),
+			'section-fields'  => __( 'Section Fields', 'formidable-pro' ),
 			'repeater-fields' => __( 'Repeater Fields', 'formidable-pro' ),
-			'date-fields'    => __( 'Date Fields', 'formidable-pro' ),
-			'toggle-fields'  => __( 'Toggle Fields', 'formidable-pro' ),
-			'slider-fields'  => __( 'Slider Fields', 'formidable-pro' ),
-			'progress-bars'  => __( 'Progress Bars &amp; Rootline', 'formidable-pro' ),
+			'date-fields'     => __( 'Date Fields', 'formidable-pro' ),
+			'toggle-fields'   => __( 'Toggle Fields', 'formidable-pro' ),
+			'slider-fields'   => __( 'Slider Fields', 'formidable-pro' ),
+			'progress-bars'   => __( 'Progress Bars &amp; Rootline', 'formidable-pro' ),
 		);
-		$boxes = array_merge( $boxes, $add_boxes );
+		$boxes     = array_merge( $boxes, $add_boxes );
 
 		foreach ( $add_boxes as $label => $name ) {
 			add_filter( 'frm_style_settings_' . $label, 'FrmProStylesController::style_box_file' );
@@ -111,7 +127,7 @@ class FrmProStylesController extends FrmStylesController {
 			if ( file_exists( $uploads['basedir'] . $file_path ) ) {
 				$css_file = $uploads['baseurl'] . $file_path;
 			} else {
-				$css_file = FrmAppHelper::jquery_ui_base_url() . '/themes/' . $theme_css . '/jquery-ui.min.css';
+				$css_file = FrmProAppHelper::jquery_ui_base_url() . '/themes/' . $theme_css . '/jquery-ui.min.css';
 			}
 		}
 
@@ -242,16 +258,36 @@ class FrmProStylesController extends FrmStylesController {
 		}
 	}
 
+	/**
+	 * @param array $args {
+	 *     @type array $defaults
+	 * }
+	 * @return void
+	 */
 	public static function include_front_css( $args ) {
-		$defaults = $args['defaults'];
+		$defaults  = $args['defaults'];
 		$important = self::is_important( $defaults );
+		$vars      = self::css_vars();
 
-		$vars = self::css_vars();
+		self::maybe_include_icon_font_css();
+		include FrmProAppHelper::plugin_path() . '/css/pro_fields.css.php';
+		include FrmProAppHelper::plugin_path() . '/css/chosen.css.php';
+		include FrmProAppHelper::plugin_path() . '/css/dropzone.css';
+		include FrmProAppHelper::plugin_path() . '/css/progress.css.php';
+	}
 
-		include( FrmProAppHelper::plugin_path() . '/css/pro_fields.css.php' );
-		include( FrmProAppHelper::plugin_path() . '/css/chosen.css.php' );
-		include( FrmProAppHelper::plugin_path() . '/css/dropzone.css' );
-		include( FrmProAppHelper::plugin_path() . '/css/progress.css.php' );
+	/**
+	 * Maybe read the font icons CSS when including additional CSS for the front end.
+	 * Various Pro fields require this including: Collapsible sections, strong password meters, star ratings, repeater buttons, datepicker arrows, and signature toggle buttons.
+	 * This version check is to make sure that we do not include the font icon CSS twice as Lite version before 5.5.1 include font icons in front end CSS.
+	 * We plan to migrate away from this in the near future in favour of using SVG instead of font icons.
+	 *
+	 * @return void
+	 */
+	private static function maybe_include_icon_font_css() {
+		if ( version_compare( FrmAppHelper::plugin_version(), '5.5.1', '>=' ) ) {
+			readfile( FrmAppHelper::plugin_path() . '/css/font_icons.css' );
+		}
 	}
 
 	/**
@@ -260,7 +296,7 @@ class FrmProStylesController extends FrmStylesController {
 	public static function add_defaults( $settings ) {
 		self::set_toggle_slider_colors( $settings );
 		self::set_toggle_date_colors( $settings );
-
+		self::set_bg_image_settings( $settings );
 		return $settings;
 	}
 
@@ -302,6 +338,14 @@ class FrmProStylesController extends FrmStylesController {
 	}
 
 	/**
+	 * @since 5.0.08
+	 */
+	private static function set_bg_image_settings( &$settings ) {
+		$settings['bg_image_id']      = '';
+		$settings['bg_image_opacity'] = '100%';
+	}
+
+	/**
 	 * This CSS is only loaded with the ajax call.
 	 *
 	 * @since 3.0
@@ -324,15 +368,31 @@ class FrmProStylesController extends FrmStylesController {
 		$important = empty( $settings['important_style'] ) ? '' : ' !important';
 
 		// calculate the top position based on field padding
-		$top_pad = explode( ' ', $settings['field_pad'] );
-		$top_pad = reset( $top_pad ); // the top padding is listed first
-		$pad_unit = preg_replace( '/[0-9]+/', '', $top_pad ); //px, em, rem...
+		$top_pad    = explode( ' ', $settings['field_pad'] );
+		$top_pad    = reset( $top_pad ); // the top padding is listed first
+		$pad_unit   = preg_replace( '/[0-9]+/', '', $top_pad ); //px, em, rem...
 		$top_margin = (int) str_replace( $pad_unit, '', $top_pad ) / 2;
+		$defaults   = self::get_default_style();
+		$vars       = self::css_vars();
 
-		$defaults = self::get_default_style();
-		$vars     = self::css_vars();
+		$bg_image_url     = false;
+		$bg_image_opacity = false;
+		if ( ! empty( $settings['bg_image_id'] ) ) {
+			$bg_image_url = wp_get_attachment_url( $settings['bg_image_id'] );
+			if ( false !== $bg_image_url && isset( $settings['bg_image_opacity'] ) ) {
+				$bg_image_opacity = $settings['bg_image_opacity'];
+				if ( '%' === $bg_image_opacity[ strlen( $bg_image_opacity ) - 1 ] ) {
+					$bg_image_opacity = substr( $bg_image_opacity, 0, strlen( $bg_image_opacity ) - 1 );
+				}
+				if ( is_numeric( $bg_image_opacity ) ) {
+					$bg_image_opacity = floatval( $bg_image_opacity ) / 100;
+				} else {
+					$bg_image_opacity = false;
+				}
+			}
+		}
 
-		include( FrmProAppHelper::plugin_path() . '/css/single-style.css.php' );
+		include FrmProAppHelper::plugin_path() . '/css/single-style.css.php';
 	}
 
 	/**
@@ -368,6 +428,81 @@ class FrmProStylesController extends FrmStylesController {
 
 	private static function is_important( $defaults ) {
 		return ( isset( $defaults['important_style'] ) && ! empty( $defaults['important_style'] ) ) ? ' !important' : '';
+	}
+
+	/**
+	 * Called when the frm_style_settings_general_section_after_background action is triggered the first time in the pro plugin.
+	 *
+	 * @since 5.0.08
+	 *
+	 * @param array $args with keys 'frm_style', 'style'.
+	 */
+	public static function echo_bg_image_settings( $args ) {
+		$style = $args['style'];
+
+		if ( ! empty( $style->post_content['bg_image_id'] ) ) {
+			$bg_image_id       = absint( $style->post_content['bg_image_id'] );
+			$bg_image          = wp_get_attachment_image( $bg_image_id );
+			$bg_image_filepath = get_attached_file( $bg_image_id );
+			$bg_image_filename = basename( $bg_image_filepath );
+		} else {
+			$bg_image_id       = 0;
+			$bg_image          = '<img src="" class="frm_hidden" />';
+			$bg_image_filepath = '';
+			$bg_image_filename = '';
+		}
+
+		include self::view_folder() . '/_bg-image.php';
+	}
+
+	/**
+	 * Called when the frm_style_settings_general_section_after_background action is triggered the second time in the pro plugin.
+	 *
+	 * @since 5.0.08
+	 *
+	 * @param array $args with keys 'frm_style', 'style'.
+	 */
+	public static function echo_additional_background_image_settings( $args ) {
+		$style            = $args['style'];
+		$hidden           = empty( $style->post_content['bg_image_id'] );
+		$class            = $hidden ? 'frm_hidden ' : '';
+		$class           .= 'frm_bg_image_additional_settings';
+		$bg_image_opacity = isset( $style->post_content['bg_image_opacity'] ) ? $style->post_content['bg_image_opacity'] : '100%';
+		include self::view_folder() . '/_bg-image-settings.php';
+	}
+
+	/**
+	 * Called when the frm_style_settings_input_atts action is triggered.
+	 *
+	 * @since 5.0.08
+	 */
+	public static function echo_style_settings_input_atts( $key ) {
+		if ( self::is_colorpicker( $key ) ) {
+			// Support alpha in color pickers in pro style settings.
+			self::echo_alpha_colorpicker_atts();
+		}
+	}
+
+	/**
+	 * Determine if input is a colorpicker type based on key name.
+	 *
+	 * @since 5.0.08
+	 *
+	 * @param string $key
+	 * @return bool
+	 */
+	private static function is_colorpicker( $key ) {
+		if ( in_array( $key, array( 'error_bg', 'error_border', 'error_text' ), true ) ) {
+			return true;
+		}
+		return '_color' === substr( $key, -6 ) || '_color_error' === substr( $key, -12 ) || '_color_active' === substr( $key, -13 ) || '_color_disabled' === substr( $key, -15 );
+	}
+
+	/**
+	 * @since 5.0.08
+	 */
+	private static function echo_alpha_colorpicker_atts() {
+		echo 'data-alpha-color-type="rgba" data-alpha-enabled="true"';
 	}
 
 	/**

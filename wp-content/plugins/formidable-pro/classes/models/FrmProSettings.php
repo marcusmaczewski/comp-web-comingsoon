@@ -46,6 +46,7 @@ class FrmProSettings extends FrmSettings {
 	 * @since 4.06.01
 	 */
 	public function fill_with_defaults( $params = array() ) {
+		$params['additional_filter_keys'] = array( 'edit_msg', 'update_value', 'already_submitted' );
 		parent::fill_with_defaults( $params );
 		$this->fill_inbox_defaults();
 	}

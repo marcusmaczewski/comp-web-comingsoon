@@ -56,7 +56,7 @@ class FrmProFormsHelper {
 
 				echo 'var frmHide=' . json_encode( $frm_vars['dep_logic_fields'] ) . ';';
 				echo 'if(typeof __frmHideOrShowFields == "undefined"){__frmHideOrShowFields=frmHide;}';
-				echo 'else{__frmHideOrShowFields=jQuery.extend(__frmHideOrShowFields,frmHide);}';
+				echo 'else{__frmHideOrShowFields=__frmHideOrShowFields.concat(frmHide);}';
 			}
 		} else {
 			// Save time and just hide the fields that are in frm_hide_fields
@@ -128,16 +128,20 @@ class FrmProFormsHelper {
 		echo '__frmDropzone=' . json_encode( $js ) . ';';
 	}
 
+	/**
+	 * @param array $frm_vars
+	 * @return void
+	 */
 	public static function load_datepicker_js( $frm_vars ) {
-		if ( ! isset($frm_vars['datepicker_loaded']) || empty($frm_vars['datepicker_loaded']) || ! is_array($frm_vars['datepicker_loaded']) ) {
+		if ( empty( $frm_vars['datepicker_loaded'] ) || ! is_array( $frm_vars['datepicker_loaded'] ) ) {
 			return;
 		}
 
 		$frmpro_settings = FrmProAppHelper::get_settings();
 
-		reset($frm_vars['datepicker_loaded']);
-		$datepicker = key($frm_vars['datepicker_loaded']);
-		$load_lang = false;
+		reset( $frm_vars['datepicker_loaded'] );
+		$datepicker   = key( $frm_vars['datepicker_loaded'] );
+		$loaded_langs = array();
 
 		$datepicker_js = array();
 		foreach ( $frm_vars['datepicker_loaded'] as $date_field_id => $options ) {
@@ -171,13 +175,15 @@ class FrmProFormsHelper {
 
 			if ( empty( $custom_options ) ) {
 				$datepicker_js[] = $date_options;
-			} else if ( $date_field_id ) {
+			} else {
+				$change_month = self::adjust_value_for_js_boolean( $date_options['options'], 'changeMonth' );
+				$change_year  = self::adjust_value_for_js_boolean( $date_options['options'], 'changeYear' );
 				?>
 jQuery(document).ready(function($){
 $('<?php echo $trigger_id; ?>').addClass('frm_custom_date');
 $(document).on('focusin','<?php echo $trigger_id; ?>', function(){
 $.datepicker.setDefaults($.datepicker.regional['']);
-$(this).datepicker($.extend($.datepicker.regional['<?php echo esc_js( $options['locale'] ); ?>'],{dateFormat:'<?php echo esc_js( $frmpro_settings->cal_date_format ); ?>',changeMonth:true,changeYear:true,yearRange:'<?php echo esc_js( $date_options['options']['yearRange'] ); ?>',defaultDate:'<?php echo esc_js( $date_options['options']['defaultDate'] ); ?>'<?php
+$(this).datepicker($.extend($.datepicker.regional['<?php echo esc_js( $options['locale'] ); ?>'],{dateFormat:'<?php echo esc_js( $frmpro_settings->cal_date_format ); ?>',changeMonth:<?php echo esc_html( $change_month ); ?>,changeYear:<?php echo esc_html( $change_year ); ?>,yearRange:'<?php echo esc_js( $date_options['options']['yearRange'] ); ?>',defaultDate:'<?php echo esc_js( $date_options['options']['defaultDate'] ); ?>'<?php
 echo $custom_options;
 ?>}));
 });
@@ -185,20 +191,15 @@ echo $custom_options;
 <?php
 			}
 
-			if ( ! empty( $options['locale'] ) && ! $load_lang ) {
-				$load_lang         = true;
-				$base_url          = FrmAppHelper::jquery_ui_base_url();
-				$jquery_ui_version = FrmAppHelper::script_version( 'jquery-ui-core', '1.11.4' );
-
-				if ( version_compare( $jquery_ui_version, '1.12.0', '>=' ) ) {
-					// versions 1.12.0+ do not include i18n files, so use the previous version's files.
-					$base_url = str_replace( $jquery_ui_version, '1.11.4', $base_url );
+			if ( ! empty( $options['locale'] ) && ! in_array( $options['locale'], $loaded_langs, true ) ) {
+				if ( ! $loaded_langs ) {
+					// this was enqueued late, so make sure it gets printed
+					add_action( 'wp_footer', 'print_footer_scripts', 21 );
+					add_action( 'admin_print_footer_scripts', 'print_footer_scripts', 99 );
 				}
 
-				wp_enqueue_script( 'jquery-ui-i18n', $base_url . '/i18n/jquery-ui-i18n.min.js', array( 'jquery-ui-core', 'jquery-ui-datepicker' ), FrmAppHelper::plugin_version() );
-				// this was enqueued late, so make sure it gets printed
-				add_action( 'wp_footer', 'print_footer_scripts', 21 );
-				add_action( 'admin_print_footer_scripts', 'print_footer_scripts', 99 );
+				$loaded_langs[] = $options['locale'];
+				wp_enqueue_script( 'jquery-ui-i18n-' . $options['locale'], FrmProAppHelper::plugin_url() . '/js/jquery-ui-i18n/datepicker-' . $options['locale'] . '.min.js', array( 'jquery-ui-core', 'jquery-ui-datepicker' ), '1.13.2' );
 			}
 		}
 
@@ -209,6 +210,23 @@ echo $custom_options;
 		}
 
 		FrmProTimeFieldsController::load_timepicker_js( $datepicker );
+	}
+
+	/**
+	 * @param array  $options
+	 * @param string $key
+	 * @param string $default
+	 * @return string
+	 */
+	private static function adjust_value_for_js_boolean( $options, $key, $default = 'true' ) {
+		if ( ! isset( $options[ $key ] ) ) {
+			return $default;
+		}
+		$value = $options[ $key ];
+		if ( ! $value || 'false' === $value ) {
+			return 'false';
+		}
+		return 'true';
 	}
 
 	private static function get_custom_date_js( $date_field_id, $options ) {
@@ -241,10 +259,11 @@ echo $custom_options;
 		);
 
 		$triggers = array();
+		$options  = array();
 
 		foreach ( $frm_vars['calc_fields'] as $result => $field ) {
 			$calc_rules['fieldsWithCalc'][ $field['field_id'] ] = $result;
-			$calc = $field['calc'];
+			$calc                                               = $field['calc'];
 			FrmProFieldsHelper::replace_non_standard_formidable_shortcodes( array( 'field' => $field['field_id'] ), $calc );
 
 			preg_match_all("/\[(.?)\b(.*?)(?:(\/))?\]/s", $calc, $matches, PREG_PATTERN_ORDER);
@@ -253,7 +272,21 @@ echo $custom_options;
 			$calc_fields = array();
 
 			foreach ( $matches[0] as $match_key => $val ) {
-				$val = trim(trim($val, '['), ']');
+				$val  = trim( trim( $val, '[' ), ']' );
+				$show = false !== strpos( $val, ' show=' );
+				if ( $show ) {
+					$before = $val;
+					$val    = preg_replace( '/ show=("|\'){0,1}label("|\'){0,1}/', '', $val, 1 );
+					if ( $val !== $before ) {
+						$show = 'label';
+					}
+
+					if ( ! is_string( $show ) ) {
+						$show = false; // fallback to value if the show value did not match a previous check.
+						$val  = preg_replace( '/ show=("|\'){0,1}value("|\'){0,1}/', '', $val, 1 ); // treat show="value" as if no attribute was set.
+					}
+				}
+
 				$calc_fields[ $val ] = FrmField::getOne( $val );
 				if ( ! $calc_fields[ $val ] ) {
 					unset( $calc_fields[ $val ] );
@@ -264,10 +297,16 @@ echo $custom_options;
 
 				$calc_rules['fieldKeys'] = $calc_rules['fieldKeys'] + $field_keys;
 
-				$calc = str_replace( $matches[0][ $match_key ], '[' . $calc_fields[ $val ]->id . ']', $calc );
+				if ( $show && is_array( reset( $calc_fields[ $val ]->options ) ) ) {
+					$calc                                = str_replace( $matches[0][ $match_key ], '[' . $calc_fields[ $val ]->id . ' show=' . $show . ']', $calc );
+					$options[ $calc_fields[ $val ]->id ] = array_column( $calc_fields[ $val ]->options, 'label', 'value' );
+				} else {
+					$calc = str_replace( $matches[0][ $match_key ], '[' . $calc_fields[ $val ]->id . ']', $calc );
+					$show = false;
+				}
 
 				// Prevent invalid decrement error for -- in calcs
-				if ( $field['calc_type'] != 'text' ) {
+				if ( $field['calc_type'] !== 'text' ) {
 					$calc = str_replace( '-[', '- [', $calc );
 				}
 			}
@@ -277,8 +316,8 @@ echo $custom_options;
 				$calc = do_shortcode( $calc );
 			}
 
-			$triggers[] = reset($field_keys);
-			$calc_rules['calc'][ $result ] = self::get_calc_rule_for_field(
+			$triggers[]                              = reset( $field_keys );
+			$calc_rules['calc'][ $result ]           = self::get_calc_rule_for_field(
 				array(
 					'field'    => $field,
 					'calc'     => $calc,
@@ -318,6 +357,10 @@ echo $custom_options;
 			$calc_rules['triggers'] = array_values( $triggers );
 		}
 
+		if ( $options ) {
+			$calc_rules['options'] = $options;
+		}
+
 		echo 'var frmcalcs=' . json_encode( $calc_rules ) . ";\n";
 		echo 'if(typeof __FRMCALC == "undefined"){__FRMCALC=frmcalcs;}';
 		echo 'else{__FRMCALC=jQuery.extend(true,{},__FRMCALC,frmcalcs);}';
@@ -336,18 +379,53 @@ echo $custom_options;
 			'in_embed_form' => isset( $field['in_embed_form'] ) ? $field['in_embed_form'] : '0',
 		);
 
-		$rule['inSection'] = $rule['in_section'];
+		$rule['inSection']   = $rule['in_section'];
 		$rule['inEmbedForm'] = $rule['in_embed_form'];
 
 		if ( isset( $atts['parent_form_id'] ) ) {
 			$rule['parent_form_id'] = $atts['parent_form_id'];
 		}
 
-		if ( isset( $field['is_currency'] ) && $field['is_currency'] ) {
-			$rule['is_currency'] = true;
-		}
+		self::add_is_currency_calc_rule_for_field( $rule, $field );
 
 		return $rule;
+	}
+
+	/**
+	 * Adds `is_currency` rule for field if applicable.
+	 *
+	 * @since 5.2.06
+	 *
+	 * @param array $rule Calculation rule.
+	 * @param array $field Field array.
+	 */
+	private static function add_is_currency_calc_rule_for_field( &$rule, $field ) {
+		if ( empty( $field['is_currency'] ) ) {
+			return;
+		}
+
+		// If field is invisible and converted to <input type="hidden">, treat it as a number field instead of price.
+		if ( ! FrmProFieldsHelper::is_field_visible_to_user( $field ) ) {
+			return;
+		}
+
+		$rule['is_currency'] = true;
+		if ( ! empty( $field['custom_currency'] ) ) {
+			$rule['custom_currency'] = self::prepare_custom_currency( $field );
+		}
+	}
+
+	/**
+	 * @since 5.0.16
+	 *
+	 * @param array $field
+	 * @return array
+	 */
+	public static function prepare_custom_currency( $field ) {
+		if ( is_array( $field['custom_currency'] ) ) {
+			return $field['custom_currency'];
+		}
+		return FrmProCurrencyHelper::get_custom_currency( $field );
 	}
 
 	/**
@@ -381,6 +459,21 @@ echo $custom_options;
 	}
 
 	/**
+	 * @since 5.0.10
+	 *
+	 * @param array $frm_vars
+	 * @return void
+	 */
+	public static function load_rte_js( $frm_vars ) {
+		if ( empty( $frm_vars['rte_reqmessages'] ) ) {
+			return;
+		}
+		echo 'var rteReqmessages = ' . json_encode( $frm_vars['rte_reqmessages'] ) . ";\n";
+		echo 'if(typeof __FRMRTEREQMESSAGES == "undefined"){__FRMRTEREQMESSAGES=rteReqmessages;}';
+		echo 'else{__FRMRTEREQMESSAGES=jQuery.extend(true,{},__FRMRTEREQMESSAGES,rteReqmessages);}';
+	}
+
+	/**
 	 * Check if a field has a variable HTML ID
 	 *
 	 * @since 2.03.07
@@ -390,20 +483,48 @@ echo $custom_options;
 	 * @return bool
 	 */
 	private static function has_variable_html_id( $field ) {
-		if ( in_array( $field->type, array( 'radio', 'scale', 'star', 'checkbox' ) )
-			 || ( in_array( $field->type, array( 'lookup', 'product' ) ) && in_array( $field->field_options['data_type'], array( 'radio', 'checkbox' ) ) )
-		) {
-			return true;
-		} else {
-			return false;
-		}
+		$is_radio_check = in_array( $field->type, self::radio_similar_field_types(), true );
+		$is_other_radio = in_array( $field->type, array( 'lookup', 'product' ), true ) && in_array( $field->field_options['data_type'], array( 'radio', 'checkbox' ), true );
+
+		$has_variable_html_id = $is_radio_check || $is_other_radio;
+
+		/**
+		 * Allows modifying a field has variable HTML id or not.
+		 *
+		 * @since 5.0.02
+		 *
+		 * @param array $has_variable_html_id Has variable HTML id or not.
+		 * @param array $args                 Arguments. Contains `field`.
+		 */
+		return apply_filters( 'frm_pro_field_has_variable_html_id', $has_variable_html_id, compact( 'field' ) );
+	}
+
+	/**
+	 * Gets field types that are similar to radio field.
+	 *
+	 * @since 5.4
+	 *
+	 * @return array
+	 */
+	public static function radio_similar_field_types() {
+		/**
+		 * Allows modifying radio similar field types.
+		 *
+		 * @since 5.4
+		 *
+		 * @param array $field_types Field types.
+		 */
+		return apply_filters( 'frm_pro_radio_similar_field_types', array( 'radio', 'scale', 'star', 'checkbox' ) );
 	}
 
 	/**
 	 * @since 4.04
+	 *
+	 * @param array $frm_vars
+	 * @return void
 	 */
 	public static function load_currency_js( $frm_vars ) {
-		if ( ! isset( $frm_vars['currency'] ) || empty( $frm_vars['currency'] ) ) {
+		if ( empty( $frm_vars['currency'] ) ) {
 			return;
 		}
 
@@ -440,7 +561,7 @@ echo $custom_options;
 	public static function get_default_opts() {
 		$frmpro_settings = FrmProAppHelper::get_settings();
 
-		return array(
+		$settings = array(
 			'edit_value'           => $frmpro_settings->update_value,
 			'edit_msg'             => $frmpro_settings->edit_msg,
 			'edit_action'          => 'message',
@@ -461,6 +582,7 @@ echo $custom_options;
 			'ajax_submit'          => 0,
 			'cookie_expiration'    => 8000,
 			'prev_value'           => __( 'Previous', 'formidable-pro' ),
+			'draft_label'          => __( 'Save Draft', 'formidable-pro' ),
 			'transition'           => '',
 			'submit_align'         => '',
 			'submit_conditions'    => array(
@@ -476,12 +598,19 @@ echo $custom_options;
 			'close_date'           => '',
 			'max_entries'          => '',
 			'protect_files'        => 0,
+			'noindex_files'        => 0,
 			'rootline'             => '',
+			'pagination_position'  => '',
 			'rootline_titles_on'   => 0,
 			'rootline_titles'      => array(),
 			'rootline_lines_off'   => 0,
 			'rootline_numbers_off' => 0,
 		);
+
+		/**
+		 * @since 5.0.15
+		 */
+		return apply_filters( 'frm_pro_default_form_settings', $settings );
 	}
 
 	public static function get_taxonomy_count( $taxonomy, $post_categories, $tax_count = 0 ) {
@@ -860,6 +989,22 @@ echo $custom_options;
 
 	public static function get_draft_link( $form ) {
 		return self::get_draft_button( $form, '', FrmFormsHelper::get_draft_link() );
+	}
+
+	/**
+	 * Gets HTML of start over button.
+	 *
+	 * @since 5.3.1
+	 *
+	 * @param object $form Form object.
+	 * @return string
+	 */
+	public static function get_start_over_html( $form ) {
+		if ( ! method_exists( 'FrmFormsHelper', 'get_start_over_shortcode' ) ) {
+			return '';
+		}
+
+		return self::get_draft_button( $form, '', FrmFormsHelper::get_start_over_shortcode(), 'start_over' );
 	}
 
 	public static function is_show_data_field( $field ) {

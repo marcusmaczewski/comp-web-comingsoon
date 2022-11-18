@@ -37,15 +37,15 @@ $show = $is_default ? 'frm_date_color' : 'frm_hidden'; // hide all settings in n
 
 <p class="frm4 frm_first frm_form_field <?php echo esc_attr( $use_themes ? 'frm_hidden' : $show ); ?>">
 	<label for="frm_date_head_bg_color"><?php esc_html_e( 'Head Color', 'formidable-pro' ); ?></label>
-	<input type="text" name="<?php echo esc_attr( $frm_style->get_field_name( 'date_head_bg_color' ) ); ?>" id="frm_date_head_bg_color" class="hex" value="<?php echo esc_attr( $style->post_content['date_head_bg_color'] ); ?>" size="4" />
+	<input type="text" name="<?php echo esc_attr( $frm_style->get_field_name( 'date_head_bg_color' ) ); ?>" id="frm_date_head_bg_color" class="hex" value="<?php echo esc_attr( $style->post_content['date_head_bg_color'] ); ?>" size="4" <?php do_action( 'frm_style_settings_input_atts', 'date_head_bg_color' ); ?> />
 </p>
 
 <p class="frm4 frm_form_field <?php echo esc_attr( $use_themes ? 'frm_hidden' : $show ); ?>">
 	<label for="frm_date_head_color"><?php esc_html_e( 'Text Color', 'formidable-pro' ); ?></label>
-	<input type="text" name="<?php echo esc_attr( $frm_style->get_field_name( 'date_head_color' ) ); ?>" id="frm_date_head_color" class="hex" value="<?php echo esc_attr( $style->post_content['date_head_color'] ); ?>" />
+	<input type="text" name="<?php echo esc_attr( $frm_style->get_field_name( 'date_head_color' ) ); ?>" id="frm_date_head_color" class="hex" value="<?php echo esc_attr( $style->post_content['date_head_color'] ); ?>" <?php do_action( 'frm_style_settings_input_atts', 'date_head_color' ); ?> />
 </p>
 
-<p class="frm4 frm_form_field <?php echo esc_attr( $use_themes ? 'frm_hidden' : $show ); ?>">
+<p class="frm4 frm_form_field <?php echo esc_attr( $use_themes ? 'frm_hidden' : $show ); ?> frm_end">
 	<label for="frm_date_band_color"><?php esc_html_e( 'Band Color', 'formidable-pro' ); ?></label>
-	<input type="text" name="<?php echo esc_attr( $frm_style->get_field_name( 'date_band_color' ) ); ?>" id="frm_date_band_color" class="hex" value="<?php echo esc_attr( $style->post_content['date_band_color'] ); ?>" />
+	<input type="text" name="<?php echo esc_attr( $frm_style->get_field_name( 'date_band_color' ) ); ?>" id="frm_date_band_color" class="hex" value="<?php echo esc_attr( $style->post_content['date_band_color'] ); ?>" <?php do_action( 'frm_style_settings_input_atts', 'date_band_color' ); ?> />
 </p>

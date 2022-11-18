@@ -25,7 +25,7 @@ class FrmProFieldHidden extends FrmFieldHidden {
 	public function prepare_field_html( $args ) {
 		$html = '';
 		$args = $this->fill_display_field_values( $args );
-		if ( FrmAppHelper::is_admin() && ( ! isset( $args['action'] ) || $args['action'] != 'create' ) && FrmProFieldsHelper::field_on_current_page( $this->field['id'] ) ) {
+		if ( FrmAppHelper::is_admin() && ( ! isset( $args['action'] ) || $args['action'] != 'create' ) && FrmProFieldsHelper::field_on_current_page( $this->field ) ) {
 			$html = '<div id="frm_field_' . esc_attr( $this->field['id'] ) . '_container" class="frm_form_field form-field frm_top_container">
 <label class="frm_primary_label">' . wp_kses_post( $this->field['name'] ) . ':</label> ' . wp_kses_post( $this->field['value'] ) . '
 </div>';

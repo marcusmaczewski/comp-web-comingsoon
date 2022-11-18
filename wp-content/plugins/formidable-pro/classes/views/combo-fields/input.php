@@ -15,22 +15,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 		FrmProComboFieldsController::maybe_add_error_class( compact( 'field', 'key', 'errors', 'atts' ) );
 	}
 	?>">
-	<label for="<?php echo esc_attr( $html_id . '_' . $key ) ?>" class="frm_screen_reader frm_hidden">
+	<label for="<?php echo esc_attr( $html_id . '_' . $key ); ?>" class="frm_screen_reader frm_hidden">
 		<?php echo esc_html( isset( $field[ $key . '_desc' ] ) && ! empty( $field[ $key . '_desc' ] ) ? $field[ $key . '_desc' ] : $field['name'] ); ?>
 	</label>
 	<?php if ( $sub_field['type'] == 'select' ) { ?>
-		<select name="<?php echo esc_attr( $field_name ) ?>[<?php echo esc_attr( $key ) ?>]" id="<?php echo esc_attr( $html_id . '_' . $key ); ?>" <?php FrmProComboFieldsController::add_atts_to_input( compact( 'field', 'sub_field', 'key' ) ); ?>>
+		<select name="<?php echo esc_attr( $field_name ); ?>[<?php echo esc_attr( $key ); ?>]" id="<?php echo esc_attr( $html_id . '_' . $key ); ?>" <?php FrmProComboFieldsController::add_atts_to_input( compact( 'field', 'sub_field', 'key' ) ); ?>>
 			<option value="">
 				<?php echo esc_html( FrmProComboFieldsController::get_dropdown_label( compact( 'field', 'key', 'sub_field' ) ) ); ?>
 			</option>
 			<?php foreach ( $sub_field['options'] as $option ) { ?>
-				<option value="<?php echo esc_attr( $option ) ?>" <?php selected( $field['value'][ $key ], $option ) ?>>
-					<?php echo esc_html( $option ) ?>
+				<option value="<?php echo esc_attr( $option ); ?>" <?php selected( $field['value'][ $key ], $option ); ?>>
+					<?php echo esc_html( $option ); ?>
 				</option>
 			<?php } ?>
 		</select>
 	<?php } else { ?>
-	<input type="<?php echo esc_attr( $sub_field['type'] ) ?>" id="<?php echo esc_attr( $html_id . '_' . $key ) ?>" value="<?php echo esc_attr( $field['value'][ $key ] ) ?>" <?php
+	<input type="<?php echo esc_attr( $sub_field['type'] ); ?>" id="<?php echo esc_attr( $html_id . '_' . $key ); ?>" value="<?php echo esc_attr( $field['value'][ $key ] ); ?>" <?php
 	if ( ! isset( $remove_names ) || ! $remove_names ) {
 		echo 'name="' . esc_attr( $field_name ) . '[' . esc_attr( $key ) . ']" ';
 	}
@@ -49,7 +49,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	// Don't show individual field errors when there is a combo field error
 	if ( ! empty( $errors ) && isset( $errors[ 'field' . $temp_id . '-' . $key ] ) && ! isset( $errors[ 'field' . $field['id'] ] ) ) {
 	?>
-	<div class="frm_error"><?php echo esc_html( $errors[ 'field' . $temp_id . '-' . $key ] ) ?></div>
+	<div class="frm_error" role="alert"><?php echo esc_html( $errors[ 'field' . $temp_id . '-' . $key ] ); ?></div>
 	<?php } ?>
 </div>
 <?php } ?>

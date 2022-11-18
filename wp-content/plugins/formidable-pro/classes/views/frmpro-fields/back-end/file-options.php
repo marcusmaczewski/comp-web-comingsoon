@@ -8,6 +8,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<i class="frm_icon_font frm_arrowdown6_icon"></i>
 </h3>
 <div class="frm_grid_container frm-collapse-me">
+	<?php if ( ! empty( $public_files_tooltip ) && ! empty( $settings_url ) ) { ?>
+		<div class="frm_warning_style" style="padding: 10px;">
+			<?php
+			FrmAppHelper::icon_by_class( 'frmfont frm_alert_icon' );
+			echo '&nbsp';
+
+			printf(
+				'%1$s %2$s.',
+				esc_html__( 'Uploads are public. File access can be updated in ', 'formidable-pro' ),
+				'<a href="' . esc_attr( $settings_url ) . '">' . esc_html__( 'Form Permissions Settings', 'formidable-pro' ) . '</a>'
+			);
+			?>
+			<span class="frm_help frm_icon_font frm_tooltip_icon" title="<?php echo esc_attr( $public_files_tooltip ); ?>"></span>
+		</div>
+	<?php } ?>
 	<p>
 		<label for="multiple_<?php echo esc_attr( $field['id'] ); ?>">
 			<input type="checkbox" name="field_options[multiple_<?php echo esc_attr( $field['id'] ); ?>]" id="multiple_<?php echo esc_attr( $field['id'] ); ?>" value="1" <?php echo checked( $field['multiple'], 1 ); ?> onchange="frm_show_div('limit_file_count_<?php echo absint( $field['id'] ); ?>',this.checked,true,'#')" />
@@ -54,7 +69,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</select>
 		</label>
 	</p>
-
 	<?php if ( $mimes ) { ?>
 	<h4><?php esc_html_e( 'Allowed file types', 'formidable-pro' ); ?></h4>
 	<p>

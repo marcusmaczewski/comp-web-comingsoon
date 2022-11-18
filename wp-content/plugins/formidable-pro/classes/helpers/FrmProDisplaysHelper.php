@@ -22,7 +22,7 @@ class FrmProDisplaysHelper {
 		$field_keys  = FrmDb::get_col( 'frm_fields', $field_query, 'field_key' );
 
 		if ( count( $field_keys ) > 200 ) {
-			$tagregexp = array_merge( $tagregexp, self::get_additional_keys_for_regex( $content, $field_keys ) );
+			$tagregexp = array_merge( $tagregexp, FrmProFieldsHelper::filter_keys_for_regex( $content, $field_keys ) );
 		} else {
 			$tagregexp = array_merge( $tagregexp, $field_keys );
 		}
@@ -37,23 +37,6 @@ class FrmProDisplaysHelper {
 		$matches[0] = self::organize_and_filter_shortcodes( $matches[0] );
 
 		return $matches;
-	}
-
-	/**
-	 * To avoid issues with regex limits, remove any field keys that aren't found in the content ahead of time for large field sets.
-	 *
-	 * @param string $content
-	 * @param array  $keys
-	 * @return array
-	 */
-	private static function get_additional_keys_for_regex( $content, $keys ) {
-		$additional_keys = array();
-		foreach ( $keys as $key ) {
-			if ( false !== strpos( $content, '[' . $key ) ) {
-				$additional_keys[] = $key;
-			}
-		}
-		return $additional_keys;
 	}
 
 	/**

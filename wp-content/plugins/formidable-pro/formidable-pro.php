@@ -2,7 +2,7 @@
 /*
 Plugin Name: Formidable Forms Pro
 Description: Add more power to your forms, and bring your reports and data management to the front-end.
-Version: 5.0.01
+Version: 5.5.3
 Plugin URI: https://formidableforms.com/
 Author URI: https://formidableforms.com/
 Author: Strategy11
@@ -25,13 +25,6 @@ if ( ! function_exists( 'load_formidable_pro' ) ) {
 			FrmProHooksController::load_pro();
 		} else {
 			add_action( 'admin_notices', 'frm_pro_forms_incompatible_version' );
-		}
-
-		// For reverse compatibility. Load views if it's still nested.
-		$frm_pro_path = dirname( __FILE__ );
-		if ( file_exists( $frm_pro_path . '/views/formidable-views.php' ) ) {
-			include $frm_pro_path . '/views/formidable-views.php';
-			load_formidable_views();
 		}
 	}
 
@@ -103,3 +96,14 @@ if ( ! function_exists( 'load_formidable_pro' ) ) {
 		<?php
 	}
 }
+
+register_deactivation_hook(
+	__FILE__,
+	function() {
+		if ( ! class_exists( 'FrmProCronController', false ) ) {
+			require_once FrmProAppHelper::plugin_path() . '/classes/controllers/FrmProCronController.php';
+		}
+
+		FrmProCronController::remove_cron();
+	}
+);

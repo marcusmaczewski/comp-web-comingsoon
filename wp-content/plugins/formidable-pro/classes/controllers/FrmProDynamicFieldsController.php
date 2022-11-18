@@ -7,6 +7,27 @@ if ( ! defined( 'ABSPATH' ) ) {
 class FrmProDynamicFieldsController {
 
 	/**
+	 * @since 5.4
+	 *
+	 * @var string
+	 */
+	const INCLUDE_DRAFTS = 'include';
+
+	/**
+	 * @since 5.4
+	 *
+	 * @var string
+	 */
+	const EXCLUDE_DRAFTS = 'exclude';
+
+	/**
+	 * @since 5.4
+	 *
+	 * @var string
+	 */
+	const DRAFT_ONLY = 'draft_only';
+
+	/**
 	 * Add options for a Dynamic field
 	 *
 	 * @since 2.01.0
@@ -128,6 +149,9 @@ class FrmProDynamicFieldsController {
 
 		$options           = array();
 		$should_strip_tags = $field->field_options['data_type'] === 'select' || FrmAppHelper::is_admin_page('formidable');
+
+		self::maybe_exclude_drafts( $metas, $values );
+
 		foreach ( $metas as $meta ) {
 			$meta = (array) $meta;
 			if ( $meta['meta_value'] == '' ) {
@@ -145,6 +169,7 @@ class FrmProDynamicFieldsController {
 		}
 
 		$options = apply_filters( 'frm_data_sort', $options, array( 'metas' => $metas, 'field' => $selected_field, 'dynamic_field' => $values ) );
+
 		unset( $metas );
 
 		if ( self::include_blank_option( $options, $field ) ) {
@@ -152,6 +177,62 @@ class FrmProDynamicFieldsController {
 		}
 
 		return wp_unslash( $options );
+	}
+
+	/**
+	 * Maybe exclude draft items.
+	 *
+	 * @since 5.4
+	 *
+	 * @param array $metas  Array of item meta and id.
+	 * @param array $values Field array.
+	 */
+	private static function maybe_exclude_drafts( &$metas, $values ) {
+		global $wpdb;
+
+		/**
+		 * Allows including or excluding draft items from dynamic data.
+		 *
+		 * @since 5.4
+		 *
+		 * @param string $include Accepts `include`, `exclude`, `draft_only`.
+		 * @param array  $args    Contains `field` as field array.
+		 */
+		$include_drafts = apply_filters( 'frm_dynamic_field_include_drafts', self::EXCLUDE_DRAFTS, array( 'field' => $values ) );
+
+		if ( self::INCLUDE_DRAFTS === $include_drafts ) {
+			return;
+		}
+
+		$draft_item_ids = FrmDb::get_col(
+			"{$wpdb->prefix}frm_items it INNER JOIN {$wpdb->prefix}frm_fields fi ON it.form_id = fi.form_id",
+			array(
+				'fi.id'    => intval( $values['form_select'] ),
+				'is_draft' => 1,
+			),
+			'it.id'
+		);
+
+		if ( ! $draft_item_ids ) {
+			return;
+		}
+
+		$draft_item_ids = array_map( 'intval', $draft_item_ids );
+
+		foreach ( $metas as $index => $meta ) {
+			if ( ! isset( $meta->item_id ) ) {
+				continue;
+			}
+
+			$meta->item_id = intval( $meta->item_id );
+
+			if (
+				self::EXCLUDE_DRAFTS === $include_drafts && in_array( $meta->item_id, $draft_item_ids, true ) ||
+				self::DRAFT_ONLY === $include_drafts && ! in_array( $meta->item_id, $draft_item_ids, true )
+			) {
+				unset( $metas[ $index ] );
+			}
+		}
 	}
 
 	/**

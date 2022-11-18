@@ -6,24 +6,27 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class FrmProFieldsController {
 
+	/**
+	 * @var array|null $visible_embedded_form_ids used to determine if a field has been made visible by its embedded form parent.
+	 */
+	private static $visible_embedded_form_ids;
+
 	public static function &change_type( $type, $field ) {
 		global $frm_vars;
 
-		remove_filter('frm_field_type', 'FrmFieldsController::change_type');
+		remove_filter( 'frm_field_type', 'FrmFieldsController::change_type' );
 
 		// Don't change user ID fields or repeating sections to hidden
-		if ( ! ( $type == 'divider' && FrmField::is_option_true( $field, 'repeat' ) ) && $type != 'user_id' && ( isset( $frm_vars['show_fields'] ) && ! empty( $frm_vars['show_fields'] ) ) && ! in_array( $field->id, $frm_vars['show_fields'] ) && ! in_array( $field->field_key, $frm_vars['show_fields'] ) ) {
+		if ( ! ( $type === 'divider' && FrmField::is_option_true( $field, 'repeat' ) ) && $type !== 'user_id' && ! FrmProGlobalVarsHelper::get_instance()->field_is_visible( $field ) ) {
 			$type = 'hidden';
 		}
 
-		if ( $type == '10radio' ) {
+		if ( $type === '10radio' ) {
 			$type = 'scale';
 		}
 
-		if ( ! FrmAppHelper::is_admin() && $type != 'hidden' && $type != 'divider' ) {
-			if ( ! FrmProFieldsHelper::is_field_visible_to_user( $field ) ) {
-				$type = 'hidden';
-			}
+		if ( ! FrmAppHelper::is_admin() && $type !== 'hidden' && $type !== 'divider' && ! FrmProFieldsHelper::is_field_visible_to_user( $field ) ) {
+			$type = 'hidden';
 		}
 
 		return $type;
@@ -41,31 +44,54 @@ class FrmProFieldsController {
 		return $opt;
 	}
 
+	/**
+	 * @param array    $field
+	 * @param stdClass $form
+	 * @param int      $parent_form_id
+	 * @return void
+	 */
 	public static function show_field( $field, $form, $parent_form_id ) {
 		global $frm_vars;
 
-		if ( empty( $field['calc'] ) ) {
+		$is_custom_range = self::field_is_custom_format_range( $field );
+
+		if ( empty( $field['calc'] ) && ! $is_custom_range ) {
 			return;
 		}
 
-		$ajax = FrmProForm::is_ajax_on( $form );
-		$inplace_edit = isset( $frm_vars['inplace_edit'] ) && $frm_vars['inplace_edit'];
-		if ( $ajax && FrmAppHelper::doing_ajax() && ! $inplace_edit ) {
+		if ( FrmProForm::is_ajax_on( $form ) && FrmAppHelper::doing_ajax() && empty( $frm_vars['inplace_edit'] ) ) {
 			return;
 		}
 
-		global $frm_vars;
-		if ( ! isset($frm_vars['calc_fields']) ) {
+		if ( ! isset( $frm_vars['calc_fields'] ) ) {
 			$frm_vars['calc_fields'] = array();
 		}
 
-		$frm_vars['calc_fields'][ $field['field_key'] ] = FrmProFormsHelper::get_calc_rule_for_field(
-			array(
-				'field'   => $field,
-				'form_id' => $form->id,
-				'parent_form_id' => $parent_form_id,
-			)
+		$attributes = array(
+			'field'          => $field,
+			'form_id'        => $form->id,
+			'parent_form_id' => $parent_form_id,
 		);
+		if ( $is_custom_range ) {
+			$attributes['calc'] = '[' . absint( $field['id'] ) . ']';
+
+			if ( empty( $field['custom_currency'] ) ) {
+				// Make sure default currency is loaded if field does not use a custom currency.
+				FrmProCurrencyHelper::add_currency_to_global( $form->id );
+			}
+		}
+
+		$frm_vars['calc_fields'][ $field['field_key'] ] = FrmProFormsHelper::get_calc_rule_for_field( $attributes );
+	}
+
+	/**
+	 * @since 5.4.3
+	 *
+	 * @param array $field
+	 * @return bool
+	 */
+	private static function field_is_custom_format_range( $field ) {
+		return 'range' === $field['type'] && ! empty( $field['is_currency'] );
 	}
 
 	public static function build_field_class( $classes, $field ) {
@@ -122,11 +148,28 @@ class FrmProFieldsController {
 
 		self::add_currency_field_attributes( $field, $add_html );
 
+		self::add_html_autocomplete( $field, $add_html );
+
 		if ( $echo ) {
 			echo $add_html;
 		}
 
 		return $add_html;
+	}
+
+	/**
+	 * Add autocomplete attribute to the field html.
+	 *
+	 * @since 5.4.1
+	 *
+	 * @param array  $field The field properties.
+	 * @param string $add_html The field html.
+	 * @return void
+	 */
+	private static function add_html_autocomplete( $field, &$add_html ) {
+		if ( ! empty( $field['autocomplete'] ) ) {
+			$add_html .= 'autocomplete="' . esc_attr( $field['autocomplete'] ) . '"';
+		}
 	}
 
 	public static function setup_input_masks( $field ) {
@@ -383,7 +426,12 @@ class FrmProFieldsController {
 
 	/**
 	 * @since 4.0
-	 * @param array $args - includes 'field', 'display', and 'values'
+	 *
+	 * @param array $args {
+	 *     @type array $display
+	 *     @type array $field
+	 * }
+	 * @return void
 	 */
 	public static function advanced_field_options( $args ) {
 		$display = $args['display'];
@@ -391,19 +439,28 @@ class FrmProFieldsController {
 
 		$is_checkbox = FrmField::is_field_type( $field, 'checkbox' );
 		$is_radio    = FrmField::is_field_type( $field, 'radio' );
-		if ( $display['type'] == 'radio' || $display['type'] == 'checkbox' || $is_radio || $is_checkbox ) {
+		if ( $display['type'] === 'radio' || $display['type'] === 'checkbox' || $is_radio || $is_checkbox ) {
 			self::alignment_setting( $args );
 		}
 
-		if ( isset( $display['prefix'] ) && $display['prefix'] ) {
-			include( FrmProAppHelper::plugin_path() . '/classes/views/frmpro-fields/back-end/prepend-options.php' );
+		if ( ! empty( $display['prefix'] ) ) {
+			include FrmProAppHelper::plugin_path() . '/classes/views/frmpro-fields/back-end/prepend-options.php';
 		}
 
 		if ( $field['type'] === 'divider' && ! empty( $field['repeat'] ) ) {
-			include( FrmProAppHelper::plugin_path() . '/classes/views/frmpro-fields/back-end/repeat-options.php' );
+			include FrmProAppHelper::plugin_path() . '/classes/views/frmpro-fields/back-end/repeat-options.php';
 		}
 
-		if ( isset( $display['visibility'] ) && $display['visibility'] ) {
+		if ( 'textarea' === $field['type'] ) {
+			include FrmProAppHelper::plugin_path() . '/classes/views/frmpro-fields/back-end/auto-grow.php';
+			include FrmProAppHelper::plugin_path() . '/classes/views/frmpro-fields/back-end/content-limit.php';
+		}
+
+		if ( ! empty( $display['autocomplete'] ) ) {
+			self::show_autocomplete_option( $args['field'] );
+		}
+
+		if ( ! empty( $display['visibility'] ) ) {
 			self::show_visibility_option( $args['field'] );
 		}
 	}
@@ -545,6 +602,18 @@ class FrmProFieldsController {
 	}
 
 	/**
+	 * Display the autocomplete option
+	 *
+	 * @since 5.4.1
+	 *
+	 * @param array $field
+	 * @return void
+	 */
+	public static function show_autocomplete_option( $field ) {
+		include FrmProAppHelper::plugin_path() . '/classes/views/frmpro-fields/back-end/autocomplete.php';
+	}
+
+	/**
 	 * Display the conditional logic option
 	 *
 	 * @since 2.02.06
@@ -568,7 +637,7 @@ class FrmProFieldsController {
 
 		if ( is_numeric( $form_id ) ) {
 			$selected_field = '';
-			$fields = FrmField::get_all_for_form( $form_id );
+			$fields = self::get_field_selection_fields( $form_id );
 			if ( $fields ) {
 				require( FrmProAppHelper::plugin_path() . '/classes/views/frmpro-fields/field-selection.php' );
 			}
@@ -582,6 +651,31 @@ class FrmProFieldsController {
 		}
 
 		wp_die();
+	}
+
+	/**
+	 * Gets fields for field selection.
+	 *
+	 * @since 5.0.04
+	 *
+	 * @param int $form_id Form ID.
+	 * @return object[]
+	 */
+	public static function get_field_selection_fields( $form_id ) {
+		$fields = FrmField::get_all_for_form( $form_id );
+		if ( $fields ) {
+			/**
+			 * Allows modifying fields in Field selection of Dynamic field.
+			 *
+			 * @since 5.0.04
+			 *
+			 * @param array $fields The fields.
+			 * @param array $args   Includes `form_id`.
+			 */
+			$fields = apply_filters( 'frm_pro_fields_in_dynamic_selection', $fields, compact( 'form_id' ) );
+		}
+
+		return $fields;
 	}
 
 	/**
@@ -640,29 +734,43 @@ class FrmProFieldsController {
 		wp_die();
 	}
 
+	/**
+	 * @param string $field_id
+	 * @param array  $options
+	 * @return void
+	 */
 	public static function date_field_js( $field_id, $options ) {
-		if ( ! isset($options['unique']) || ! $options['unique'] ) {
+		if ( self::handle_frm_datepicker_add_on_in_pro( $field_id ) ) {
+			echo ',beforeShow: frmProForm.addFormidableClassToDatepicker';
+			echo ',onClose: frmProForm.removeFormidableClassFromDatepicker';
+		}
+
+		if ( empty( $options['unique'] ) ) {
 			return;
 		}
 
 		$defaults = array(
-			'entry_id' => 0, 'start_year' => '-10', 'end_year' => '+10',
-			'locale' => '', 'unique' => 0, 'field_id' => 0,
+			'entry_id'   => 0,
+			'start_year' => '-10',
+			'end_year'   => '+10',
+			'locale'     => '',
+			'unique'     => 0,
+			'field_id'   => 0,
 		);
 
-		$options = wp_parse_args($options, $defaults);
+		$options = wp_parse_args( $options, $defaults );
 
 		global $wpdb;
 
-		$field = FrmField::getOne($options['field_id']);
+		$field = FrmField::getOne( $options['field_id'] );
 
-		if ( isset($field->field_options['post_field']) && $field->field_options['post_field'] != '' ) {
+		if ( isset( $field->field_options['post_field'] ) && $field->field_options['post_field'] != '' ) {
 			$query = array( 'post_status' => array( 'publish', 'draft', 'pending', 'future', 'private' ) );
-			if ( $field->field_options['post_field'] == 'post_custom' ) {
-				$get_field = 'meta_value';
-				$get_table = $wpdb->postmeta . ' pm LEFT JOIN ' . $wpdb->posts . ' p ON (p.ID=pm.post_id)';
+			if ( $field->field_options['post_field'] === 'post_custom' ) {
+				$get_field             = 'meta_value';
+				$get_table             = $wpdb->postmeta . ' pm LEFT JOIN ' . $wpdb->posts . ' p ON (p.ID=pm.post_id)';
 				$query['meta_value !'] = '';
-				$query['meta_key'] = $field->field_options['custom_field'];
+				$query['meta_key']     = $field->field_options['custom_field'];
 			} else {
 				$get_field = sanitize_title( $field->field_options['post_field'] );
 				$get_table = $wpdb->posts;
@@ -671,7 +779,7 @@ class FrmProFieldsController {
 			$post_dates = FrmDb::get_col( $get_table, $query, $get_field );
 		}
 
-		if ( ! is_numeric($options['entry_id']) ) {
+		if ( ! is_numeric( $options['entry_id'] ) ) {
 			$disabled = wp_cache_get($options['field_id'], 'frm_used_dates');
 		}
 
@@ -692,6 +800,39 @@ class FrmProFieldsController {
 		$selectable_response = apply_filters( 'frm_selectable_dates', 'true', compact( 'field', 'options' ) );
 
 		$disabled = apply_filters('frm_used_dates', $disabled, $field, $options);
+
+		if ( ! is_numeric( $options['entry_id'] ) && ! empty( $disabled ) ) {
+			wp_cache_set( $options['field_id'], $disabled, 'frm_used_dates' );
+		}
+
+		// This function is added in v1.04 of the Dates add on. Before that version, these filters are not supported.
+		if ( is_callable( 'FrmDatesAppHelper::plugin_version' ) ) {
+
+			add_filter(
+				'frm_dates_selectable_response',
+				function( $is_enabled, $filter_field ) use ( $selectable_response, $field ) {
+
+					if ( ! $field->field_options['unique'] ) {
+						return $is_enabled;
+					}
+					return $filter_field->field_key !== $field->field_key ? $is_enabled : $selectable_response;
+				},
+				10,
+				2
+			);
+
+			add_filter(
+				'frm_dates_disabled',
+				function( $blackout_dates, $filter_field ) use ( $disabled, $field ) {
+					return $filter_field->field_key !== $field->field_key ? $blackout_dates : array_merge( $blackout_dates, $disabled );
+				},
+				10,
+				2
+			);
+
+			return;
+		}
+
 		$js_vars = 'var m=(date.getMonth()+1),d=date.getDate(),y=date.getFullYear(),day=date.getDay();';
 		if ( empty( $disabled ) ) {
 			if ( $selectable_response != 'true' ) {
@@ -702,21 +843,36 @@ class FrmProFieldsController {
 			return;
 		}
 
-		if ( ! is_numeric($options['entry_id']) ) {
-			wp_cache_set($options['field_id'], $disabled, 'frm_used_dates');
-		}
-
 		$formatted = array();
-		foreach ( $disabled as $dis ) { //format to match javascript dates
+		foreach ( $disabled as $dis ) {
+			// format to match javascript dates
 			$formatted[] = gmdate( 'Y-n-j', strtotime( $dis ) );
 		}
 
 		$disabled = $formatted;
-		unset($formatted);
+		unset( $formatted );
 
 		echo ',beforeShowDay: function(date){' . $js_vars . 'var disabled=' . json_encode( $disabled ) . ';if($.inArray(y+"-"+m+"-"+d,disabled) != -1){return [false];} return [' . $selectable_response . '];}';
+	}
 
-		//echo ',beforeShowDay: $.datepicker.noWeekends';
+	/**
+	 * @since 5.5
+	 *
+	 * @param string $field_id
+	 * @return bool
+	 */
+	private static function handle_frm_datepicker_add_on_in_pro( $field_id ) {
+		if ( ! is_callable( 'FrmDatesAppController::date_field_options_js' ) ) {
+			// Always handle in pro when there is no Dates add on.
+			return true;
+		}
+
+		$js_options = array( 'options' => array() );
+		$extra      = compact( 'field_id' );
+		$js_options = FrmDatesAppController::date_field_options_js( $js_options, $extra );
+
+		// Return true if there are no special dates add on options set. If there are the "formidable_dates" key will be set.
+		return empty( $js_options['formidable_dates'] );
 	}
 
 	/**
@@ -739,39 +895,148 @@ class FrmProFieldsController {
 		return $required;
 	}
 
+	/**
+	 * @since 5.2.04
+	 */
+	public static function ajax_get_data_arr() {
+		$post_data = FrmAppHelper::get_param( 'postData' );
+		$response  = array();
+
+		foreach ( $post_data as $data ) {
+			if ( ! isset( $data['entry_id'] ) || ! isset( $data['current_field'] ) || ! isset( $data['hide_id'] ) ) {
+				continue;
+			}
+
+			$result_str = '';
+
+			$entry_id        = is_array( $data['entry_id'] ) ? array_map( 'intval', $data['entry_id'] ) : intval( $data['entry_id'] );
+			$current_field   = intval( $data['current_field'] );
+			$hidden_field_id = sanitize_text_field( wp_unslash( $data['hide_id'] ) );
+
+			$current    = FrmField::getOne( $current_field );
+			$data_field = FrmField::getOne( $current->field_options['form_select'] );
+
+			$meta_value = self::get_meta_value_for_ajax_handler( $entry_id, $data_field );
+
+			if ( $meta_value === null ) {
+				$response[] = $result_str;
+				continue;
+			}
+
+			$data_display_opts = apply_filters( 'frm_display_data_opts', array( 'html' => true, 'wpautop' => false ) );
+
+			$value = FrmFieldsHelper::get_display_value( $meta_value, $data_field, $data_display_opts );
+			if ( is_array( $value ) ) {
+				$value = implode( ', ', $value );
+			}
+
+			if ( is_array( $meta_value ) ) {
+				$meta_value = implode( ', ', $meta_value );
+			}
+
+			$current_field = (array) $current;
+			foreach ( $current->field_options as $o => $v ) {
+				if ( ! isset( $current_field[ $o ] ) ) {
+					$current_field[ $o ] = $v;
+				}
+				unset($o, $v);
+			}
+
+			// Set up HTML ID and HTML name
+			$html_id = '';
+			$field_name = 'item_meta';
+			FrmProFieldsHelper::get_html_id_from_container($field_name, $html_id, (array) $current, $hidden_field_id);
+
+			$on_current_page = $data['on_current_page'];
+			$on_current_page = ( 'true' === $on_current_page );
+
+			if ( $on_current_page && FrmProFieldsHelper::is_field_visible_to_user( $current ) ) {
+				if ( FrmAppHelper::is_not_empty_value( $value ) && $value !== false ) {
+					$result_str .= apply_filters(
+						'frm_show_it',
+						'<p class="frm_show_it">' . $value . "</p>\n",
+						$value,
+						array(
+							'field'    => $data_field,
+							'value'    => $meta_value,
+							'entry_id' => $entry_id,
+						)
+					);
+				}
+				$result_str .= '<input type="hidden" id="' . esc_attr( $html_id ) . '" name="' . esc_attr( $field_name ) . '" value="' . esc_attr( $value ) . '" ' . do_action( 'frm_field_input_html', $current_field, false ) . '/>';
+			} else {
+				$result_str .= esc_attr( $value );
+			}
+
+			$response[] = $result_str;
+
+		}
+
+		wp_send_json( $response );
+	}
+
+	/**
+	 * @deprecated 5.2.03
+	 */
 	public static function ajax_get_data() {
+		_deprecated_function( __METHOD__, '5.2.03' );
 		//check_ajax_referer( 'frm_ajax', 'nonce' );
 
 		$entry_id = self::get_posted_entry_ids();
 		$current_field = FrmAppHelper::get_param( 'current_field', '', 'get', 'absint' );
 		$hidden_field_id = FrmAppHelper::get_param( 'hide_id', '', 'get', 'sanitize_text_field' );
 
-		$current = FrmField::getOne($current_field);
-		$data_field = FrmField::getOne( $current->field_options['form_select'] );
-		if ( strpos( $entry_id, ',' ) ) {
-			$entry_id = explode(',', $entry_id);
+		self::get_data_for_ajax_handler( $entry_id, $current_field, $hidden_field_id );
+
+		wp_die();
+	}
+
+	/**
+	 * Gets meta value for ajax handler.
+	 *
+	 * @since 5.2.04
+	 * @since 5.2.05 The first parameter can be int or array.
+	 *
+	 * @param int|array $entry_id   Entry ID or array of entry IDs.
+	 * @param object    $data_field The data field.
+	 * @return string|array
+	 */
+	private static function get_meta_value_for_ajax_handler( $entry_id, $data_field ) {
+		if ( is_array( $entry_id ) ) {
 			$meta_value = array();
 			foreach ( $entry_id as $eid ) {
-				$new_meta = FrmProEntryMetaHelper::get_post_or_meta_value($eid, $data_field);
+				$new_meta = FrmProEntryMetaHelper::get_post_or_meta_value( $eid, $data_field );
 				if ( $new_meta ) {
 					foreach ( (array) $new_meta as $nm ) {
-						array_push($meta_value, $nm);
-						unset($nm);
+						array_push( $meta_value, $nm );
+						unset( $nm );
 					}
 				}
-				unset($new_meta, $eid);
+				unset( $new_meta, $eid );
 			}
 			$meta_value = array_unique( $meta_value );
 		} else {
-			$meta_value = FrmProEntryMetaHelper::get_post_or_meta_value($entry_id, $data_field);
+			$meta_value = FrmProEntryMetaHelper::get_post_or_meta_value( $entry_id, $data_field );
 		}
 
-		if ( $meta_value === null ) {
+		return $meta_value;
+	}
+
+	/**
+	 * @since 5.2.04
+	 */
+	private static function get_data_for_ajax_handler( $entry_id, $current_field, $hidden_field_id ) {
+		$current    = FrmField::getOne( $current_field );
+		$data_field = FrmField::getOne( $current->field_options['form_select'] );
+
+		$meta_value = self::get_meta_value_for_ajax_handler( $entry_id, $data_field );
+
+		if ( null === $meta_value ) {
 			wp_die();
 		}
 
 		$data_display_opts = apply_filters( 'frm_display_data_opts', array( 'html' => true, 'wpautop' => false ) );
-		$value = FrmFieldsHelper::get_display_value( $meta_value, $data_field, $data_display_opts );
+		$value             = FrmFieldsHelper::get_display_value( $meta_value, $data_field, $data_display_opts );
 		if ( is_array( $value ) ) {
 			$value = implode( ', ', $value );
 		}
@@ -785,13 +1050,13 @@ class FrmProFieldsController {
 			if ( ! isset( $current_field[ $o ] ) ) {
 				$current_field[ $o ] = $v;
 			}
-			unset($o, $v);
+			unset( $o, $v );
 		}
 
 		// Set up HTML ID and HTML name
-		$html_id = '';
+		$html_id    = '';
 		$field_name = 'item_meta';
-		FrmProFieldsHelper::get_html_id_from_container($field_name, $html_id, (array) $current, $hidden_field_id);
+		FrmProFieldsHelper::get_html_id_from_container( $field_name, $html_id, (array) $current, $hidden_field_id );
 
 		$on_current_page = FrmAppHelper::get_param( 'on_current_page', 'true', 'get', 'sanitize_text_field' );
 		$on_current_page = ( $on_current_page == 'true' );
@@ -804,8 +1069,6 @@ class FrmProFieldsController {
 		} else {
 			echo esc_attr( $value );
 		}
-
-		wp_die();
 	}
 
 	/**
@@ -1020,6 +1283,38 @@ class FrmProFieldsController {
 	}
 
 	/**
+	 * Order the values in a Dynamic or Lookup field.
+	 *
+	 * @since 5.5.2
+	 *
+	 * @param array $options The field options (choices)
+	 * @param array $args
+	 * @return array
+	 */
+	public static function order_values( $options, $args = array() ) {
+		if ( ! $options || empty( $args['dynamic_field'] ) || ! isset( $args['dynamic_field']['option_order'] ) ) {
+			return $options;
+		}
+
+		$order = $args['dynamic_field']['option_order'];
+		if ( $order === 'ascending' || $order === 'descending' ) {
+			if ( class_exists( 'Collator' ) ) {
+				$locale   = get_locale();
+				$collator = new Collator( $locale );
+				$collator->asort( $options );
+			} else {
+				natcasesort( $options );
+			}
+
+			if ( $order === 'descending' ) {
+				$options = array_reverse( $options, true );
+			}
+		}
+
+		return $options;
+	}
+
+	/**
 	 * @deprecated 2.03
 	 * @codeCoverageIgnore
 	 */
@@ -1058,7 +1353,7 @@ class FrmProFieldsController {
 	public static function redirect_attachment() {
 		global $post;
 
-		if ( ! is_attachment() || absint( $post->post_parent ) >= 1 || ! FrmProFileField::is_formidable_file( $post->ID ) ) {
+		if ( ! is_object( $post ) || ! is_attachment() || absint( $post->post_parent ) >= 1 || ! FrmProFileField::is_formidable_file( $post->ID ) ) {
 			return;
 		}
 
@@ -1078,7 +1373,8 @@ class FrmProFieldsController {
 	public static function delete_temp_files() {
 		remove_action( 'pre_get_posts', 'FrmProFileField::filter_media_library', 99 );
 
-		$timestamp_cutoff = gmdate( 'Y-m-d H:i:s', strtotime( '-3 hours' ) );
+		$cutoff_period    = apply_filters( 'frm_delete_temp_files_period', '-3 hours' );
+		$timestamp_cutoff = gmdate( 'Y-m-d H:i:s', strtotime( $cutoff_period ) );
 		$old_uploads      = get_posts(
 			array(
 				'post_type'      => 'attachment',
@@ -1099,8 +1395,7 @@ class FrmProFieldsController {
 
 		foreach ( $old_uploads as $upload ) {
 			// double check in case other plugins have changed the query
-			$is_temp = get_post_meta( $upload->ID, '_frm_temporary', true );
-			if ( $is_temp ) {
+			if ( FrmProFileField::file_is_temporary( $upload->ID ) ) {
 				wp_delete_attachment( $upload->ID, true );
 			}
 		}
@@ -1284,32 +1579,34 @@ class FrmProFieldsController {
 	}
 
 	public static function duplicate_section( $section_field, $form_id ) {
-		FrmAppHelper::permission_check('frm_edit_forms');
+		FrmAppHelper::permission_check( 'frm_edit_forms' );
 		check_ajax_referer( 'frm_ajax', 'nonce' );
 
 		global $wpdb, $frm_duplicate_ids;
 
 		if ( isset( $_POST['children'] ) ) {
-			$children = array_filter( (array) $_POST['children'], 'is_numeric');
-			$fields = FrmField::getAll( array( 'fi.id' => $children ), 'field_order');
+			$children = array_filter( (array) $_POST['children'], 'is_numeric' );
+			$fields = FrmField::getAll( array( 'fi.id' => $children ), 'field_order' );
 		} else {
 			$fields = array();
 		}
+
 		array_unshift( $fields, $section_field );
 
-		$order_query = array( 'field_order >' => $section_field->field_order, 'form_id' => $form_id, 'type' => 'end_divider' );
+		$order_query       = array( 'field_order >' => $section_field->field_order, 'form_id' => $form_id, 'type' => 'end_divider' );
 		$end_section_order = FrmDb::get_var( 'frm_fields', $order_query, 'field_order', array( 'order_by' => 'field_order ASC' ) );
-		$field_order = max( $section_field->field_order, $end_section_order );
+		$field_order       = max( $section_field->field_order, $end_section_order );
 
 		$ended = false;
 
-		if ( isset($section_field->field_options['repeat']) && $section_field->field_options['repeat'] ) {
+		if ( ! empty( $section_field->field_options['repeat'] ) ) {
 			// create the repeatable form
 			$new_form_id = FrmProField::create_repeat_form( 0, array( 'parent_form_id' => $form_id, 'field_name' => $section_field->name ) );
-
 		} else {
 			$new_form_id = $form_id;
 		}
+
+		$grid_helper = class_exists( 'FrmFieldGridHelper' ) ? new FrmFieldGridHelper() : false;
 
 		foreach ( $fields as $field ) {
 			// keep the current form id or give it the id of the newly created form
@@ -1324,22 +1621,38 @@ class FrmProFieldsController {
 			$values['field_order'] = $field_order;
 			$field_order++;
 
-			$values = apply_filters( 'frm_duplicated_field', $values );
+			$values   = apply_filters( 'frm_duplicated_field', $values );
 			$field_id = FrmField::create( $values );
+
+			$copy_field = $field;
+			do_action( 'frm_after_duplicate_field', compact( 'field_id', 'values', 'copy_field', 'form_id' ) );
 
 			if ( ! $field_id ) {
 				continue;
 			}
 
-			$frm_duplicate_ids[ $field->id ] = $field_id;
+			$frm_duplicate_ids[ $field->id ]        = $field_id;
 			$frm_duplicate_ids[ $field->field_key ] = $field_id;
 
-			if ( 'end_divider' == $field->type ) {
+			if ( 'end_divider' === $field->type ) {
 				$ended = true;
 			}
 
+			$duplicated_field_object = FrmField::getOne( $field_id );
+
+			if ( $grid_helper instanceof FrmFieldGridHelper ) {
+				$grid_helper->set_field( $duplicated_field_object );
+				$grid_helper->maybe_begin_field_wrapper();
+			}
+
 			$values['id'] = $this_form_id;
-			FrmFieldsController::load_single_field($field_id, $values);
+			FrmFieldsController::load_single_field( $duplicated_field_object, $values );
+
+			if ( $grid_helper instanceof FrmFieldGridHelper ) {
+				$grid_helper->sync_list_size();
+			}
+
+			unset( $field, $duplicated_field_object );
 		}
 
 		if ( ! $ended ) {
@@ -1623,6 +1936,28 @@ class FrmProFieldsController {
 		$args['selected'] = ! empty( $field['image_options'] ) ? '1' : '0';
 
 		return $args;
+	}
+
+	/**
+	 * Prevent field creation when license is expired.
+	 *
+	 * @since 5.4.2
+	 *
+	 * @param string $field_type
+	 * @return void
+	 */
+	public static function before_create_field( $field_type ) {
+		if ( ! FrmProAddonsController::is_expired_outside_grace_period() ) {
+			return;
+		}
+
+		$pro_fields            = FrmField::pro_field_selection();
+		$field_type_is_allowed = ! array_key_exists( $field_type, $pro_fields );
+
+		if ( ! $field_type_is_allowed ) {
+			// Die early instead of adding a pro field for an expired license.
+			wp_die( -1 );
+		}
 	}
 
 	/**

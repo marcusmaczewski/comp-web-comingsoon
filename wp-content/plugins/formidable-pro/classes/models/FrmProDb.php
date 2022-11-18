@@ -11,7 +11,7 @@ class FrmProDb {
 	/**
 	 * @since 3.0.02
 	 */
-	public static $plug_version = '5.0.01';
+	public static $plug_version = '5.5.3';
 
 	/**
 	 * @since 2.3
@@ -55,7 +55,7 @@ class FrmProDb {
 		}
 
 		if ( $old_db_version && is_numeric( $old_db_version ) ) {
-			$migrations = array( 16, 17, 25, 27, 28, 29, 30, 31, 32, 34, 36, 37, 39, 43, 44, 50, 62, 65, 66, 71, 78, 79, 81, 82, 83 );
+			$migrations = array( 16, 17, 25, 27, 28, 29, 30, 31, 32, 34, 36, 37, 39, 43, 44, 50, 62, 65, 66, 71, 78, 79, 81, 83 );
 			foreach ( $migrations as $migration ) {
 				if ( $db_version >= $migration && $old_db_version < $migration ) {
 					call_user_func( array( __CLASS__, 'migrate_to_' . $migration ) );
@@ -141,152 +141,8 @@ class FrmProDb {
 		}
 	}
 
-	/**
-	 * Attempt to move formidable/views to formidable-views and activate
-	 *
-	 * @since 4.09
-	 */
-	private static function migrate_to_82() {
-		if ( ! class_exists( 'FrmViewsAppHelper' ) ) {
-			return;
-		}
-
-		self::add_views_to_inbox();
-
-		if ( ! self::views_plugin_is_nested() || self::views_plugin_exists_outside_of_pro() ) {
-			return;
-		}
-
-		self::try_to_move_views_with_wp_filesystem() || self::try_to_download_views();
-	}
-
-	private static function add_views_to_inbox() {
-		$link   = FrmAppHelper::admin_upgrade_link( 'view-separation', 'account/downloads/' );
-		$addons = admin_url( 'admin.php?page=formidable-addons' );
-		$inbox  = new FrmInbox();
-		$inbox->add_message(
-			array(
-				'key'     => 'views-separation',
-				'subject' => 'Formidable Views are now in a new plugin',
-				'message' => 'Guess what? Our views have a huge redesign coming. In order to make this easier to manage, we have moved Views into a new add-on. No worries. You will not lose access to Formidable Views.<br/>
-					This change should be fully automatic. Please check to make sure you have the new Formidable Views plugin on your site. If it\'s missing, please download it from your <a href="' . esc_url( $addons ) . '">Add-ons page</a> or <a href="' . esc_url( $link ) . '" target="_blank" rel="noopener">account page</a>.',
-				'cta'     => '<a href="' . esc_url( $addons ) . '" class="button-primary frm-button-primary">' . esc_html__( 'Check Add-ons', 'formidable-pro' ) . '</a>',
-				'icon'    => 'frm_folder_icon',
-				'type'    => 'news',
-			)
-		);
-	}
-
-	private static function desired_views_folder_location() {
-		return WP_PLUGIN_DIR . '/formidable-views';
-	}
-
-	private static function nested_views_folder_location() {
-		return FrmProAppHelper::plugin_path() . '/views';
-	}
-
-	private static function views_plugin_exists_outside_of_pro() {
-		return file_exists( self::desired_views_folder_location() );
-	}
-
-	private static function views_plugin_is_nested() {
-		return FrmViewsAppHelper::plugin_path() === self::nested_views_folder_location();
-	}
-
-	/**
-	 * @return bool true on success
-	 */
-	private static function try_to_move_views_with_wp_filesystem() {
-		$attempted = get_option( 'frm_attempt_views_copy' );
-		if ( false !== $attempted ) {
-			return false;
-		}
-
-		update_option( 'frm_attempt_views_copy', true, 'no' );
-		self::setup_wp_filesystem();
-
-		$nested_views_path  = self::nested_views_folder_location();
-		$desired_views_path = self::desired_views_folder_location();
-		$plugin_helper      = new FrmProInstallPlugin(
-			array(
-				'plugin_file' => 'formidable-views/formidable-views.php',
-			)
-		);
-
-		global $wp_filesystem;
-
-		if ( is_null( $wp_filesystem ) ) {
-			return false;
-		}
-
-		$desired_path_exists = $wp_filesystem->mkdir( $desired_views_path );
-
-		if ( ! $desired_path_exists ) {
-			return false;
-		}
-
-		$result = copy_dir( $nested_views_path, $desired_views_path );
-
-		if ( true === $result ) {
-			$plugin_helper->activate_plugin();
-			wp_schedule_single_event( time() + 1, 'delete_nested_views' );
-			return true;
-		}
-
-		return false;
-	}
-
-	private static function setup_wp_filesystem() {
-		new FrmCreateFile( array( 'file_name' => '' ) );
-	}
-
 	public static function delete_nested_views_folder() {
-		self::setup_wp_filesystem();
-		global $wp_filesystem;
-		if ( ! is_null( $wp_filesystem ) ) {
-			$wp_filesystem->rmdir( self::nested_views_folder_location(), true );
-		}
-	}
-
-	/**
-	 * @return bool true on success
-	 */
-	private static function try_to_download_views() {
-		$license   = FrmProAddonsController::get_pro_license();
-		$api       = new FrmFormApi( $license );
-		$downloads = $api->get_api_info();
-		$views     = self::get_views_from_addons( $downloads );
-
-		if ( empty( $views['url'] ) ) {
-			return false;
-		}
-
-		$download_url = esc_url_raw( $views['url'] );
-
-		require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
-
-		// Create the plugin upgrader with our custom skin.
-		$installer = new Plugin_Upgrader( new FrmProInstallerSkin() );
-		$installer->install( $download_url );
-
-		// Flush the cache and get the newly installed plugin basename.
-		wp_cache_flush();
-		$installed = $installer->plugin_info();
-		if ( ! $installed ) {
-			return false;
-		}
-
-		$network_wide = is_plugin_active_for_network( 'formidable-pro/formidable-pro.php' );
-		activate_plugin( $installed, '', $network_wide );
-
-		return true;
-	}
-
-	/**
-	 * @since 4.09
-	 */
-	private static function get_views_from_addons( $addons ) {
-		return isset( $addons['28027505'] ) ? $addons['28027505'] : array();
+		_deprecated_function( __METHOD__, '5.3.1' );
 	}
 
 	/**

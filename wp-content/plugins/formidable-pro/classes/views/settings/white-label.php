@@ -8,10 +8,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 </p>
 <p>
 	<label class="frm_left_label"><?php esc_html_e( 'Plugin Label', 'formidable-pro' ); ?></label>
-	<input type="text" name="frm_menu" id="frm_menu" value="<?php echo esc_attr( $frm_settings->menu ) ?>" />
+	<input type="text" name="frm_menu" id="frm_menu" value="<?php echo esc_attr( $frm_settings->menu ); ?>" />
 	<?php if ( is_multisite() && current_user_can( 'setup_network' ) ) { ?>
 		<label for="frm_mu_menu">
-			<input type="checkbox" name="frm_mu_menu" id="frm_mu_menu" value="1" <?php checked( $frm_settings->mu_menu, 1 ) ?> />
+			<input type="checkbox" name="frm_mu_menu" id="frm_mu_menu" value="1" <?php checked( $frm_settings->mu_menu, 1 ); ?> />
 			<?php esc_html_e( 'Use this menu name site-wide', 'formidable-pro' ); ?>
 		</label>
 	<?php } ?>

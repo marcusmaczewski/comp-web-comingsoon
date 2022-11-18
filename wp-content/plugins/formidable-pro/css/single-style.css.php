@@ -83,7 +83,7 @@ if ( isset( $settings['progress_border_color'] ) && $settings['progress_border_c
 
 <?php if ( is_numeric( $top_margin ) && $pad_unit === 'px' ) { ?>
 .<?php echo esc_html( $settings['style_class'] ); ?> .chosen-container-single .chosen-single abbr{
-    top:<?php echo esc_attr( 6 + (int) $top_margin ); ?>px <?php esc_html( $important ); ?>;
+	top:<?php echo esc_attr( 6 + (int) $top_margin ); ?>px <?php esc_html( $important ); ?>;
 }
 
 .<?php echo esc_html( $settings['style_class'] ); ?> .chosen-container-single .chosen-single div{
@@ -207,7 +207,7 @@ if ( isset( $settings['progress_border_color'] ) && $settings['progress_border_c
 
 /* Start other fields */
 .<?php echo esc_html( $settings['style_class'] ); ?> input.frm_other_input:not(.frm_other_full){
-    width:auto <?php echo esc_html( $important ); ?>;
+	width:auto <?php echo esc_html( $important ); ?>;
 }
 
 .<?php echo esc_html( $settings['style_class'] ); ?> .frm_checkbox input.frm_other_input:not(.frm_other_full),
@@ -220,18 +220,18 @@ if ( isset( $settings['progress_border_color'] ) && $settings['progress_border_c
 }
 
 .<?php echo esc_html( $settings['style_class'] ); ?> .frm_full input.frm_other_input:not(.frm_other_full){
-    margin-left:0 <?php echo esc_html( $important ); ?>;
-    margin-top:8px;
+	margin-left:0 <?php echo esc_html( $important ); ?>;
+	margin-top:8px;
 }
 /* End other */
 
 /* Start Password field */
 .<?php echo esc_html( $settings['style_class'] ); ?> span.frm-pass-verified::before {
-    color:<?php echo esc_html( $settings['success_text_color'] . $important ); ?>;
+	color:<?php echo esc_html( $settings['success_text_color'] . $important ); ?>;
 }
 
 .<?php echo esc_html( $settings['style_class'] ); ?> span.frm-pass-req::before {
-    color:<?php echo esc_html( $settings['error_text'] . $important ); ?>;
+	color:<?php echo esc_html( $settings['error_text'] . $important ); ?>;
 }
 /* End Password field */
 
@@ -241,23 +241,23 @@ if ( isset( $settings['progress_border_color'] ) && $settings['progress_border_c
 }
 
 .<?php echo esc_html( $settings['style_class'] ); ?> h3 .frm_<?php echo esc_html( $settings['collapse_pos'] ); ?>_collapse{
-    display:inline;
+	display:inline;
 }
 .<?php echo esc_html( $settings['style_class'] ); ?> h3 .frm_<?php echo ( 'after' === $settings['collapse_pos'] ) ? 'before' : 'after'; ?>_collapse{
-    display:none;
+	display:none;
 }
 
 .menu-edit #post-body-content .<?php echo esc_html( $settings['style_class'] ); ?> .frm_section_heading h3{
-    margin:0;
+	margin:0;
 }
 
 .<?php echo esc_html( $settings['style_class'] ); ?> .frm_section_heading{
-    margin-top:<?php echo esc_html( $settings['section_mar_top'] . $important ); ?>;
+	margin-top:<?php echo esc_html( $settings['section_mar_top'] . $important ); ?>;
 }
 
 .<?php echo esc_html( $settings['style_class'] ); ?>  .frm-show-form .frm_section_heading .frm_section_spacing,
 .menu-edit #post-body-content .<?php echo esc_html( $settings['style_class'] ); ?>  .frm-show-form .frm_section_heading .frm_section_spacing{
-    margin-bottom:<?php echo esc_html( $settings['section_mar_bottom'] . $important ); ?>;
+	margin-bottom:<?php echo esc_html( $settings['section_mar_bottom'] . $important ); ?>;
 }
 
 /* End Sections */
@@ -267,3 +267,38 @@ if ( isset( $settings['progress_border_color'] ) && $settings['progress_border_c
 	font-size:<?php echo esc_html( $settings['font_size'] ); ?>;
 	color:<?php echo esc_html( $settings['label_color'] . $important ); ?>;
 }
+
+<?php if ( ! empty( $bg_image_url ) ) { ?>
+	.<?php echo esc_html( $settings['style_class'] ); ?> {
+		--bg-image-url: url( '<?php echo esc_html( $bg_image_url ); ?>' );
+	}
+
+	<?php if ( ! empty( $bg_image_opacity ) ) { ?>
+		.<?php echo esc_html( $settings['style_class'] ); ?> .frm_form_fields > fieldset:before {
+			opacity: <?php echo esc_html( $bg_image_opacity ); ?>;
+		}
+	<?php } ?>
+<?php } ?>
+
+<?php $datepicker_class = FrmProFieldsHelper::get_datepicker_class(); ?>
+
+/* Datepicker */
+.<?php echo esc_html( $settings['style_class'] ); ?> ~ .<?php echo esc_html( $datepicker_class ); ?> .ui-datepicker-title > select,
+.<?php echo esc_html( $settings['style_class'] ); ?> .<?php echo esc_html( $datepicker_class ); ?> .ui-datepicker-title > select{
+	color: <?php echo esc_html( $settings['text_color'] ) . esc_html( $important ); ?>;
+	background-color:<?php echo esc_html( $settings['bg_color'] . $important ); ?>;
+}
+/* End Datepicker */
+
+/* Submit Buttons */
+<?php if ( empty( $settings['submit_style'] ) ) : ?>
+.<?php echo esc_html( $settings['style_class'] ); ?> .frm_button_submit[disabled] {
+	opacity: 0.5;
+}
+.<?php echo esc_html( $settings['style_class'] ); ?> input[type=submit][disabled],
+.<?php echo esc_html( $settings['style_class'] ); ?> .frm_submit input[type=button][disabled],
+.<?php echo esc_html( $settings['style_class'] ); ?> .frm_submit button[disabled] {
+	cursor: not-allowed;
+}
+<?php endif; ?>
+/* End Submit Buttons */

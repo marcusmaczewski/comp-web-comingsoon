@@ -116,6 +116,11 @@ class FrmProEntryFormatter extends FrmEntryFormatter {
 	 * @param string $content
 	 */
 	protected function add_section_to_content( $field_value, &$content ) {
+		// Add item meta to $_POST to make `FrmProEntryMeta::is_field_conditionally_hidden()` work.
+		if ( ! isset( $_POST['item_meta'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$_POST['item_meta'] = $field_value->get_entry()->metas;
+		}
+
 		if ( $this->is_extra_field_included( $field_value ) ) {
 			$content .= $this->section_placeholder();
 			parent::add_field_value_to_content( $field_value, $content );
@@ -224,12 +229,24 @@ class FrmProEntryFormatter extends FrmEntryFormatter {
 			foreach ( $field_values as $child_field_id => $child_field_info ) {
 				$child_field_info->prepare_displayed_value( $this->atts );
 
+				if ( isset( $this->table_generator ) ) {
+					$this->table_generator->is_child = $is_repeater;
+				}
+
 				$this->add_field_value_to_content( $child_field_info, $content );
+			}
+
+			if ( isset( $this->table_generator ) ) {
+				$this->table_generator->is_child = false;
 			}
 
 			if ( $content !== $pre_content && $is_repeater ) {
 				$this->add_separator( $content );
 			}
+		}
+
+		if ( isset( $this->table_generator ) ) {
+			$this->table_generator->is_child = false;
 		}
 	}
 
@@ -243,7 +260,7 @@ class FrmProEntryFormatter extends FrmEntryFormatter {
 		if ( $this->format === 'plain_text_block' ) {
 			$content .= "\r\n";
 		} else if ( $this->format === 'table' ) {
-			$content .= $this->table_generator->generate_single_cell_table_row( '&nbsp;' );
+			$content .= $this->table_generator->generate_single_cell_table_row( '' );
 		}
 	}
 
@@ -257,11 +274,6 @@ class FrmProEntryFormatter extends FrmEntryFormatter {
 	 */
 	protected function prepare_html_display_value_for_extra_fields( $field_value, &$display_value ) {
 		switch ( $field_value->get_field_type() ) {
-
-			case 'break':
-				$display_value = '<br/><br/>';
-				break;
-
 			case 'divider':
 				$display_value = '<h3>' . $field_value->get_field_label() . '</h3>';
 				$this->maybe_remove_section_title( $field_value, $display_value );
@@ -269,6 +281,7 @@ class FrmProEntryFormatter extends FrmEntryFormatter {
 
 			default:
 				parent::prepare_html_display_value_for_extra_fields( $field_value, $display_value );
+				break;
 		}
 	}
 
@@ -303,17 +316,13 @@ class FrmProEntryFormatter extends FrmEntryFormatter {
 	 */
 	protected function prepare_plain_text_display_value_for_extra_fields( $field_value, &$display_value ) {
 		switch ( $field_value->get_field_type() ) {
-
-			case 'break':
-				$display_value = "\r\n\r\n";
-				break;
-
 			case 'divider':
 				$display_value = "\r\n" . $field_value->get_field_label() . "\r\n";
 				break;
 
 			default:
 				parent::prepare_plain_text_display_value_for_extra_fields( $field_value, $display_value );
+				break;
 		}
 	}
 
@@ -462,5 +471,46 @@ class FrmProEntryFormatter extends FrmEntryFormatter {
 	 */
 	protected function section_placeholder() {
 		return '{section_placeholder}';
+	}
+
+	protected function add_html_row( $value_args, &$content ) {
+		$value_args['label'] = $this->maybe_process_shortcodes_in_label( $value_args['label'] );
+		parent::add_html_row( $value_args, $content );
+	}
+
+	private function maybe_process_shortcodes_in_label( $label ) {
+		if ( false !== strpos( $label, '[' ) ) {
+			$label = $this->process_shortcodes_in_label( $label );
+		}
+		return $label;
+	}
+
+	private function process_shortcodes_in_label( $label ) {
+		return FrmFieldsHelper::basic_replace_shortcodes( $label, $this->entry->form_id, $this->entry );
+	}
+
+	/**
+	 * Check if an extra field is included
+	 *
+	 * @since 5.0.04
+	 *
+	 * @param FrmFieldValue $field_value
+	 *
+	 * @return bool
+	 */
+	protected function is_extra_field_included( $field_value ) {
+		$included = parent::is_extra_field_included( $field_value );
+
+		if ( $included ) {
+			$field = $field_value->get_field();
+			if ( ! isset( $field->temp_id ) ) {
+				$field->temp_id = $field->id;
+			}
+			$errors = array();
+			FrmProEntryMeta::validate_no_input_fields( $errors, $field );
+			$included = ! FrmProEntryMeta::is_field_conditionally_hidden( $field );
+		}
+
+		return $included;
 	}
 }

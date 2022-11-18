@@ -174,6 +174,9 @@ class FrmProNestedFormsController {
 			return 0;
 		}
 
+		// Name or Address field value is array and needs to be converted to string.
+		self::convert_array_values_to_string( $values );
+
 		$child_field_ids = array_keys( $values );
 		$value           = array_values( $values );
 		$where           = array(
@@ -189,6 +192,21 @@ class FrmProNestedFormsController {
 
 		$processed_item_ids[] = $entry_id;
 		return $entry_id;
+	}
+
+	/**
+	 * Converts array values to string.
+	 *
+	 * @since 5.0.07
+	 *
+	 * @param array $arr The array.
+	 */
+	private static function convert_array_values_to_string( &$arr ) {
+		foreach ( $arr as &$value ) {
+			if ( is_array( $value ) ) {
+				$value = serialize( $value );
+			}
+		}
 	}
 
 	/**
@@ -252,6 +270,15 @@ class FrmProNestedFormsController {
 		$response = array(
 			'is_repeat_limit_reached' => self::is_repeat_limit_reached( $repeat_limit, $row_count + 1 ),
 		);
+
+		if ( is_callable( 'FrmFormsController::add_js_validate_form_to_global_vars' ) ) {
+			$form = FrmForm::getOne( $field->form_id );
+			if ( ! empty( $form->options['js_validate'] ) ) {
+				FrmFormsController::add_js_validate_form_to_global_vars( $form );
+			}
+		}
+
+		FrmProEntriesController::maybe_include_exclude_fields( $form->id );
 
 		ob_start();
 		self::display_single_iteration_of_nested_form( $field_name, $args );
@@ -787,28 +814,14 @@ class FrmProNestedFormsController {
 			return '';
 		}
 
-		$frm_settings = FrmAppHelper::get_settings();
-		if ( $frm_settings->old_css ) {
-			$classes = array(
-				2 => '_half',
-				3 => '_third',
-				4 => '_fourth',
-				5 => '_fifth',
-				6 => '_sixth',
-				7 => '_seventh',
-				8 => '_eighth',
-			);
-			$class = ( isset( $classes[ $count ] ) ) ? $classes[ $count ] : '';
+		if ( 2 == $count ) {
+			$class = array( 10, 2 );
+		} elseif ( $count < 13 ) {
+			$field_width  = floor( 12 / ( $count ) );
+			$submit_width = 12 - ( $field_width * ( $count - 1 ) );
+			$class        = array( $field_width, $submit_width );
 		} else {
-			if ( 2 == $count ) {
-				$class = array( 10, 2 );
-			} elseif ( $count < 13 ) {
-				$field_width = floor( 12 / ( $count ) );
-				$submit_width = 12 - ( $field_width * ( $count - 1 ) );
-				$class = array( $field_width, $submit_width );
-			} else {
-				$class = '';
-			}
+			$class = '';
 		}
 
 		return $class;
@@ -818,7 +831,7 @@ class FrmProNestedFormsController {
 		if ( is_array( $add_class ) ) {
 			$position = 'button' === $type ? 1 : 0;
 			$classes .= ' frm' . $add_class[ $position ];
-		} else {
+		} elseif ( $add_class ) {
 			$classes .= ' frm' . $add_class;
 		}
 	}

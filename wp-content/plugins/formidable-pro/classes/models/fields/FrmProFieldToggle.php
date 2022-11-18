@@ -72,31 +72,12 @@ class FrmProFieldToggle extends FrmFieldType {
 		$checked_values = $this->get_field_column('value');
 
 		$show_labels = FrmField::get_option( $this->field, 'show_label' );
-		$off_label = FrmField::get_option( $this->field, 'toggle_off' );
-		$on_label = FrmField::get_option( $this->field, 'toggle_on' );
+		$off_label   = FrmField::get_option( $this->field, 'toggle_off' );
+		$on_label    = FrmField::get_option( $this->field, 'toggle_on' );
+		$checked     = FrmAppHelper::check_selected( $checked_values, $on_label ) ? ' checked="checked" ' : '';
+		$toggle_args = compact( 'show_labels', 'off_label', 'on_label', 'checked', 'input_html' );
 
-		$checked = FrmAppHelper::check_selected( $checked_values, $on_label ) ? ' checked="checked" ' : '';
-		$input = '<div>';
-
-		$data = '';
-
-		$input .= '<label class="frm_switch_block">' . "\r\n";
-		if ( $show_labels && ! empty( $off_label ) ) {
-			$data = ' data-off="' . esc_attr( $off_label ) . '"';
-			$input .= '<span class="frm_off_label frm_switch_opt">' . $off_label . '</span>';
-		}
-
-		$input .= '<input type="checkbox" name="' . esc_attr( $args['field_name'] ) . '[]" id="' . esc_attr( $args['html_id'] ) . '" value="' . esc_attr( $on_label ) . '" ' . $checked . $data . $input_html . '/>' . "\r\n";
-		$input .= '<span class="frm_switch" tabindex="0">' . "\r\n";
-		$input .= '<span class="frm_slider"></span>' . "\r\n";
-		$input .= '</span>';
-		if ( $show_labels && $on_label != 1 ) {
-			$input .= '<span class="frm_on_label frm_switch_opt">' . $on_label . '</span>' . "\r\n";
-		}
-		$input .= '</label>';
-		$input .= '</div>';
-
-		return $input;
+		return FrmProHtmlHelper::toggle( $args['html_id'], $args['field_name'], $toggle_args );
 	}
 
 	/**

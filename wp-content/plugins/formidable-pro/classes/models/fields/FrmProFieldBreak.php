@@ -117,4 +117,18 @@ class FrmProFieldBreak extends FrmFieldType {
 		$current_page = isset( $frm_vars['prev_page'][ $this->field['form_id'] ] ) ? $frm_vars['prev_page'][ $this->field['form_id'] ] : 0;
 		return '<input type="hidden" name="frm_next_page" class="frm_next_page" id="frm_next_p_' . esc_attr( $current_page ) . '" value="" />';
 	}
+
+	/**
+	 * @since 5.5.2
+	 *
+	 * @param string|array $value
+	 * @param array        $atts
+	 * @return string
+	 */
+	public function get_display_value( $value, $atts = array() ) {
+		if ( ! empty( $atts['plain_text'] ) ) {
+			return "\r\n"; // Another line break is also added in FrmEntryFormatter::prepare_plain_text_display_value_for_extra_fields.
+		}
+		return '<br/><br/>';
+	}
 }

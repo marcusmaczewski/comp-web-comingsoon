@@ -30,7 +30,18 @@ if ( FrmAppHelper::is_admin() ) { ?>
 
 	if ( $field['size'] ) {
 	?>
-		<style type="text/css">#wp-field_<?php echo esc_attr( $field['field_key'] ) ?>-wrap{width:<?php echo esc_attr( $field['size'] ) . ( is_numeric( $field['size'] ) ? 'px' : '' ); ?>;}</style><?php
+		<style type="text/css">#wp-field_<?php echo esc_attr( $field['field_key'] ); ?>-wrap{width:<?php echo esc_attr( $field['size'] ) . ( is_numeric( $field['size'] ) ? 'px' : '' ); ?>;}</style><?php
+	}
+
+	if ( FrmField::is_required( $field ) ) {
+		$req_msg = FrmFieldsHelper::get_error_msg( $field, 'blank' );
+		if ( $req_msg ) {
+			global $frm_vars;
+			if ( ! isset( $frm_vars['rte_reqmessages'] ) ) {
+				$frm_vars['rte_reqmessages'] = array();
+			}
+			$frm_vars['rte_reqmessages'][ $html_id ] = $req_msg;
+		}
 	}
 
 	wp_editor( FrmAppHelper::esc_textarea( $field['value'], true ), $html_id, $e_args );

@@ -41,8 +41,24 @@ class FrmProCurrencyHelper {
 		}
 
 		if ( ! isset( $frm_vars['currency'][ $form_id ] ) ) {
-			$frm_vars['currency'][ $form_id ] = self::get_currency( $form_id );
+			$frm_vars['currency'][ $form_id ] = self::normalize_decimal_separators( self::get_currency( $form_id ) );
 		}
+	}
+
+	/**
+	 * Avoid blank decimal separators causing calculated values to be multipled by 100.
+	 *
+	 * @since 5.0.16
+	 *
+	 * @param array $currency
+	 * @return array
+	 */
+	private static function normalize_decimal_separators( $currency ) {
+		$currency['decimal_separator'] = trim( $currency['decimal_separator'] );
+		if ( ! $currency['decimal_separator'] && 0 === (int) $currency['decimals'] ) {
+			$currency['decimal_separator'] = '.';
+		}
+		return $currency;
 	}
 
 	/**
@@ -68,8 +84,27 @@ class FrmProCurrencyHelper {
 			return $value;
 		}
 
-		$form_id = is_object( $field ) ? $field->form_id : $field['form_id'];
-		return self::format_amount_for_currency( $form_id, $value );
+		$form_id  = is_object( $field ) ? $field->form_id : $field['form_id'];
+		$currency = ! empty( $field->field_options['custom_currency'] ) ? self::get_custom_currency( $field->field_options ) : null;
+
+		return self::format_amount_for_currency( $form_id, $value, $currency );
+	}
+
+	/**
+	 * @since 5.0.16
+	 *
+	 * @param array $field_options
+	 * @return array
+	 */
+	public static function get_custom_currency( $field_options ) {
+		return array(
+			'thousand_separator' => $field_options['custom_thousand_separator'],
+			'decimal_separator'  => $field_options['custom_decimal_separator'],
+			'decimals'           => (int) $field_options['custom_decimals'],
+			'symbol_left'        => $field_options['custom_symbol_left'],
+			'symbol_right'       => $field_options['custom_symbol_right'],
+			'symbol_padding'     => '',
+		);
 	}
 
 	/**
@@ -77,22 +112,26 @@ class FrmProCurrencyHelper {
 	 *
 	 * @param object|int   $form   Form object or ID.
 	 * @param string|float $amount The string could contain the currency symbol.
+	 * @param array|null   $currency
+	 * @return string|float
 	 */
-	public static function format_amount_for_currency( $form = null, $amount = 0 ) {
+	public static function format_amount_for_currency( $form = null, $amount = 0, $currency = null ) {
 		if ( null === $form ) {
 			return $amount;
 		}
 
-		$currency = self::get_currency( $form );
+		if ( is_null( $currency ) ) {
+			$currency = self::get_currency( $form );
+		}
 
 		if ( is_string( $amount ) ) {
 			$amount = floatval( self::prepare_price( $amount, $currency ) );
 		}
 
-		$amount = number_format( $amount, $currency['decimals'], $currency['decimal_separator'], $currency['thousand_separator'] );
-		$left_symbol = $currency['symbol_left'] . $currency['symbol_padding'];
+		$amount       = number_format( $amount, $currency['decimals'], $currency['decimal_separator'], $currency['thousand_separator'] );
+		$left_symbol  = $currency['symbol_left'] . $currency['symbol_padding'];
 		$right_symbol = $currency['symbol_padding'] . $currency['symbol_right'];
-		$amount = $left_symbol . $amount . $right_symbol;
+		$amount       = $left_symbol . $amount . $right_symbol;
 
 		return $amount;
 	}

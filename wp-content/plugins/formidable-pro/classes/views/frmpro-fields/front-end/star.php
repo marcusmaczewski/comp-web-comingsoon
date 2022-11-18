@@ -27,10 +27,10 @@ if ( is_array( $field['options'] ) ) {
 		$count      = absint( $opt_key ) + 1;
 		$aria_label = sprintf( _n( '%1$s Star', '%1$s Stars', $count, 'formidable-pro' ), $count );
 		?>
-		<input type="radio" name="<?php echo esc_attr( $field_name ) ?>" id="<?php echo esc_attr( $html_id . '-' . $opt_key ) ?>" value="<?php echo esc_attr( $opt ) ?>" <?php
+		<input type="radio" name="<?php echo esc_attr( $field_name ); ?>" id="<?php echo esc_attr( $html_id . '-' . $opt_key ); ?>" value="<?php echo esc_attr( $opt ); ?>" <?php
 		checked( $field['value'], $opt ) . ' ';
 		do_action( 'frm_field_input_html', $field );
-		?> /><label for="<?php echo esc_attr( $html_id . '-' . $opt_key ) ?>" class="<?php echo esc_attr( $class ) ?>"><span class="frm_screen_reader"><?php echo esc_html( $aria_label ); ?></span></label>
+		?> /><label for="<?php echo esc_attr( $html_id . '-' . $opt_key ); ?>" class="<?php echo esc_attr( $class ); ?>"><span class="frm_screen_reader"><?php echo esc_html( $aria_label ); ?></span></label>
 <?php
 	}
 }

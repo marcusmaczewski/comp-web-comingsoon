@@ -100,10 +100,7 @@ class FrmProEntriesListHelper extends FrmEntriesListHelper {
 			?>
 		</ul>
 	</div>
-		<?php if ( FrmAppHelper::get_param( 'frm-full', '', 'get', 'sanitize_text_field' ) ) { ?>
-			<input type="hidden" name="frm-full" value="1" />
-			<?php
-		}
+		<?php
 		submit_button( $text, 'button hide-if-js', false, false, array( 'id' => 'search-submit' ) );
 		?>
 

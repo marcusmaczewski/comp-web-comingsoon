@@ -153,7 +153,7 @@ class FrmProPost {
 		self::populate_custom_fields( $action, $entry, $fields, $new_post );
 		self::populate_taxonomies( $action, $entry, $fields, $new_post );
 
-		$new_post = apply_filters('frm_new_post', $new_post, compact('form', 'action', 'entry'));
+		$new_post = apply_filters( 'frm_new_post', $new_post, compact( 'form', 'action', 'entry' ) );
 
 		return $new_post;
 	}

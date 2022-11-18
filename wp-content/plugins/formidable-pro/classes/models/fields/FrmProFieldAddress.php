@@ -262,8 +262,11 @@ class FrmProFieldAddress extends FrmFieldType {
 		return array_combine( $empty_array, $value );
 	}
 
+	/**
+	 * @return array
+	 */
 	private function empty_value_array() {
-		return array( 'line1' => '', 'line2' => '', 'city' => '', 'state' => '', 'zip' => '', 'country' => '' );
+		return FrmProAddressesController::empty_value_array();
 	}
 
 	/**

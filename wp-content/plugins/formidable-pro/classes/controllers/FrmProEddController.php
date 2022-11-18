@@ -41,20 +41,6 @@ class FrmProEddController extends FrmAddon {
 	 */
 	private function set_download() {
 		$this->plugin_file = FrmProAppHelper::plugin_path() . '/formidable-pro.php';
-		$this->get_beta    = $this->has_nested_views_plugin();
-	}
-
-	/**
-	 * @return bool true if views is nested
-	 */
-	private function has_nested_views_plugin() {
-		if ( ! function_exists( 'is_plugin_active' ) ) {
-			require_once( ABSPATH . '/wp-admin/includes/plugin.php' );
-		}
-
-		$file_name   = 'views/formidable-views.php';
-		$stand_alone = is_plugin_active( 'formidable-' . $file_name );
-		return file_exists( FrmProAppHelper::plugin_path() . '/' . $file_name ) && ! $stand_alone;
 	}
 
 	public function set_license( $license ) {
@@ -147,13 +133,16 @@ class FrmProEddController extends FrmAddon {
 		return $this->pro_is_authorized();
 	}
 
+	/**
+	 * @return void
+	 */
 	public function pro_cred_form() {
 		global $frm_vars;
 
 		$config_license = $this->get_defined_license();
 		$authorized     = $frm_vars['pro_is_authorized'];
 
-		$type = $this->get_license_type();
+		$license_type = FrmProAddonsController::get_readable_license_type();
 
 		?>
 
@@ -173,8 +162,8 @@ class FrmProEddController extends FrmAddon {
 	</p>
 
 	<div class="frm-show-authorized">
-		<p>You're using Formidable Forms Premium. Enjoy! 🙂</p>
-		<?php if ( ! empty( $type ) && $type !== 'elite' ) { ?>
+		<p>You're using Formidable Forms <?php echo esc_html( $license_type ); ?>. Enjoy! 🙂</p>
+		<?php if ( 'Elite' !== $license_type ) { ?>
 		<p style="font-size:1.1em">
 			To <b>unlock more features</b> consider <a href="<?php echo esc_url( FrmAppHelper::make_affiliate_url( FrmAppHelper::admin_upgrade_link( 'settings-upgrade', 'account/downloads/' ) ) ); ?>">upgrading to the Elite plan</a>.
 		</p>
@@ -197,21 +186,6 @@ class FrmProEddController extends FrmAddon {
 <div class="clear"></div>
 
 		<?php
-	}
-
-	/**
-	 * @since 4.03
-	 */
-	private function get_license_type() {
-		$api    = new FrmFormApi();
-		$addons = $api->get_api_info();
-		$errors = $api->get_error_from_response( $addons );
-		$type   = isset( $errors['type'] ) ? $errors['type'] : '';
-		if ( empty( $type ) && ! empty( $addons ) ) {
-			$first = reset( $addons );
-			$type  = isset( $first['type'] ) ? $first['type'] : '';
-		}
-		return $type;
 	}
 
 	/**

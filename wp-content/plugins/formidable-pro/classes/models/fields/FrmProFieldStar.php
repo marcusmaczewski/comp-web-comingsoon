@@ -112,7 +112,15 @@ class FrmProFieldStar extends FrmFieldType {
 		return $max;
 	}
 
+	/**
+	 * @param mixed $value
+	 * @return array
+	 */
 	private function get_rounded_decimal( $value ) {
+		if ( is_array( $value ) ) {
+			$value = 0;
+		}
+
 		$numbers = array(
 			'decimal' => 0,
 			'digit'   => $value,
@@ -123,14 +131,14 @@ class FrmProFieldStar extends FrmFieldType {
 			$value = round( $value, 2 );
 			list( $numbers['digit'], $numbers['decimal'] ) = explode( '.', $value );
 
-			if ( strlen( $numbers['decimal'] ) == 1 ) {
+			if ( strlen( $numbers['decimal'] ) === 1 ) {
 				// make sure there are two digits after the decimal
 				$numbers['decimal'] = $numbers['decimal'] * 10;
 			}
 
 			if ( $numbers['decimal'] < 25 ) {
 				$numbers['decimal'] = 0;
-			} else if ( $numbers['decimal'] < 75 ) {
+			} elseif ( $numbers['decimal'] < 75 ) {
 				$numbers['decimal'] = 5;
 			} else {
 				$numbers['decimal'] = 0;

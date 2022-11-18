@@ -436,13 +436,15 @@ class FrmProEntryMetaHelper {
 		$default_value = $field->default_value;
 		if ( strpos( $default_value, '[auto_id') !== false ) {
 			list( $prefix, $shortcode ) = explode( '[auto_id', $default_value );
-			list( $shortcode, $suffix ) = explode( ']', $shortcode );
+			list( $shortcode, $suffix ) = explode( ']', $shortcode, 2 );
 
 			if ( $prefix !== '' ) {
+				list ( $max, $prefix ) = self::maybe_remove_date_or_time_from_from_autoid( $max, $prefix, true );
 				FrmProFieldsHelper::replace_non_standard_formidable_shortcodes( array(), $prefix );
 			}
 
 			if ( $suffix !== '' ) {
+				list ( $max, $suffix ) = self::maybe_remove_date_or_time_from_from_autoid( $max, $suffix, false );
 				FrmProFieldsHelper::replace_non_standard_formidable_shortcodes( array(), $suffix );
 			}
 
@@ -453,6 +455,105 @@ class FrmProEntryMetaHelper {
 		$max = filter_var( $max, FILTER_SANITIZE_NUMBER_INT );
 
 		return $max;
+	}
+
+	/**
+	 * @since 5.0.06
+	 *
+	 * @param string $max
+	 * @param string $pattern either a prefix or a suffix.
+	 * @param bool   $is_prefix
+	 * @return array
+	 */
+	private static function maybe_remove_date_or_time_from_from_autoid( $max, $pattern, $is_prefix ) {
+		list( $max, $pattern ) = self::replace_datetime_from_autoid( 'date', $max, $pattern, $is_prefix );
+		list( $max, $pattern ) = self::replace_datetime_from_autoid( 'time', $max, $pattern, $is_prefix );
+		return array( $max, $pattern );
+	}
+
+	/**
+	 * @since 5.0.06
+	 *
+	 * @param string $shortcode either 'date' or 'time'.
+	 * @param string $max
+	 * @param string $pattern either a prefix or a suffix.
+	 * @param bool   $is_prefix
+	 * @return array
+	 */
+	private static function replace_datetime_from_autoid( $shortcode, $max, $pattern, $is_prefix ) {
+		$check = '[' . $shortcode;
+		$start = strpos( $pattern, $check );
+		if ( false !== $start ) {
+			$start = strpos( $pattern, 'format=', $start );
+		}
+		if ( false !== $start ) {
+			$start        += strlen( 'format=' );
+			$end           = strpos( $pattern, ']', $start );
+			$format        = substr( $pattern, $start, $end - $start );
+			$format        = trim( $format, '"\'' );
+			$reverse_regex = ! $is_prefix;
+			$regex         = self::build_regex_from_datetime_format( $format, $reverse_regex );
+
+			if ( $reverse_regex ) {
+				$max = strrev( preg_replace( $regex, '', strrev( $max ), 1 ) );
+			} else {
+				$max = preg_replace( $regex, '', $max, 1 );
+			}
+
+			$replace_regex = '/\[' . $shortcode . '\s+format=("|\'){0,1}' . $format . '("|\'){0,1}\]/';
+			$pattern       = preg_replace( $replace_regex, '', $pattern, 1 );
+		}
+		return array( $max, $pattern );
+	}
+
+	/**
+	 * @since 5.0.06
+	 *
+	 * @param string $format
+	 * @param bool   $reverse
+	 * @return string
+	 */
+	private static function build_regex_from_datetime_format( $format, $reverse = false ) {
+		$regex      = array();
+		$characters = str_split( $format );
+
+		foreach ( $characters as $character ) {
+			switch ( $character ) {
+				case 'Y':
+					$regex[] = '\d{4}';
+					break;
+
+				case 'm':
+				case 'd':
+				case 'H':
+				case 'h':
+				case 'i':
+				case 'y':
+				case 's':
+					$regex[] = '\d{2}';
+					break;
+
+				case 'G':
+					$regex[] = '\d{1,2}';
+					break;
+
+				case 'w':
+					$regex[] = '\d{1}';
+					break;
+
+				case '_':
+				case '-':
+				case ':':
+					$regex[] = $character;
+					break;
+			}
+		}
+
+		if ( $reverse ) {
+			$regex = array_reverse( $regex );
+		}
+
+		return '/' . implode( '', $regex ) . '/';
 	}
 
 	/**

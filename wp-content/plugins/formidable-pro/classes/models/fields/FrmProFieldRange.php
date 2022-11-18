@@ -26,6 +26,19 @@ class FrmProFieldRange extends FrmFieldType {
 		return $settings;
 	}
 
+	/**
+	 * @since 5.4.3
+	 *
+	 * @param array $args - Includes 'field', 'display', and 'values'
+	 * @return void
+	 */
+	public function show_primary_options( $args ) {
+		$field = $args['field'];
+		$type  = __( 'number', 'formidable-pro' );
+		include FrmProAppHelper::plugin_path() . '/classes/views/frmpro-fields/back-end/currency-format.php';
+		parent::show_primary_options( $args );
+	}
+
 	protected function builder_text_field( $name = '' ) {
 		if ( is_object( $this->field ) ) {
 			$min  = FrmField::get_option( $this->field, 'minnum' );
@@ -141,6 +154,10 @@ class FrmProFieldRange extends FrmFieldType {
 		$starting_value = ( '' === $value || false === $value ) ? $default : $value;
 		$starting_value = $this->get_mid_value( $starting_value );
 
+		if ( ! empty( $this->field->field_options['is_currency'] ) ) {
+			$starting_value = FrmProCurrencyHelper::maybe_format_currency( $starting_value, $this->field, array() );
+		}
+
 		$num  = '<span class="frm_range_value">' . esc_html( $starting_value ) . '</span>';
 		$pre  = $this->format_unit( 'prepend', $is_builder );
 		$unit = $this->format_unit( 'append', $is_builder );
@@ -160,7 +177,8 @@ class FrmProFieldRange extends FrmFieldType {
 
 		$min = FrmField::get_option( $this->field, 'minnum' );
 		$max = FrmField::get_option( $this->field, 'maxnum' );
-		$mid = ( $max - $min ) / 2;
+		$mid = ( $max - $min ) / 2 + $min;
+
 		if ( is_int( $mid ) ) {
 			return $mid;
 		}

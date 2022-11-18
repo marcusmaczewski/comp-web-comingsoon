@@ -112,6 +112,7 @@ ul.frm_page_bar li{
 	display: flex<?php echo esc_html( $important ); ?>;
 	flex-direction: column<?php echo esc_html( $important ); ?>;
 	justify-content: flex-end<?php echo esc_html( $important ); ?>;
+	margin: 0<?php echo esc_html( $important ); ?>;
 }
 
 .frm_forms .frm_progress_line li:first-of-type input {

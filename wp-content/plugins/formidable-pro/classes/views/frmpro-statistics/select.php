@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                 </div>
                 <div id="nav-menu-footer">
 					<div class="major-publishing-actions">
-						<input type="submit" class="button-primary" value="<?php esc_attr_e( 'Go', 'formidable-pro' ) ?>" />
+						<input type="submit" class="button-primary" value="<?php esc_attr_e( 'Go', 'formidable-pro' ); ?>" />
 					</div>
 
                 <div class="clear"></div>

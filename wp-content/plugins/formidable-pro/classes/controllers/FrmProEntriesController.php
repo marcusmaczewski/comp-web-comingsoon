@@ -14,11 +14,6 @@ class FrmProEntriesController {
         return $init;
     }
 
-	public static function data_sort( $options ) {
-        natcasesort($options); //TODO: add sorting options
-        return $options;
-    }
-
 	/* Back End CRUD */
 	public static function show_comments( $entry ) {
 		$id = $entry->id;
@@ -172,6 +167,34 @@ class FrmProEntriesController {
     }
 
 	/**
+	 * If a field default value matches [auto_id] patterns, evaluate the shortcode again ad assign it to the new entry.
+	 *
+	 * @since 5.4.4
+	 *
+	 * @param array $metas
+	 *
+	 * @return array $metas
+	 */
+	public static function autoincrement_on_duplicate( $metas ) {
+		foreach ( $metas as $meta ) {
+			$field = FrmField::getOne( $meta->field_id );
+			if ( ! is_string( $field->default_value ) ) {
+				continue;
+			}
+
+			if ( ! preg_match( '/\[auto_id[^\]]*\]/', $field->default_value ) ) {
+				continue;
+			}
+			$value = $field->default_value;
+
+			FrmProFieldsHelper::replace_non_standard_formidable_shortcodes( array( 'field' => $field ), $value );
+			$meta->meta_value = $value;
+		}
+
+		return $metas;
+	}
+
+	/**
 	 * Delete all entries in a form when the 'delete all' button is clicked.
 	 *
 	 * @since 4.02.04
@@ -207,7 +230,7 @@ class FrmProEntriesController {
 			$message = 'no_entries_selected';
 		}
 
-		$url = admin_url( 'admin.php?page=formidable-entries&frm-full=1&frm_action=list&form=' . absint( $form_id ) );
+		$url = admin_url( 'admin.php?page=formidable-entries&frm_action=list&form=' . absint( $form_id ) );
 
 		if ( $message ) {
 			$url .= '&message=' . $message;
@@ -1256,35 +1279,49 @@ class FrmProEntriesController {
         echo '</p>';
     }
 
+	/**
+	 * Create a Formidable entry with a Post action from a Post.
+	 *
+	 * @param string|int|false $id
+	 * @param string|int|false $post_id
+	 */
     public static function create_post_entry( $id = false, $post_id = false ) {
         if ( FrmAppHelper::doing_ajax() ) {
             check_ajax_referer( 'frm_ajax', 'nonce' );
         }
 
         if ( ! $id ) {
-			$id = absint( $_POST['id'] );
+			$id = FrmAppHelper::get_post_param( 'id', '', 'absint' );
         }
 
         if ( ! $post_id ) {
-			$post_id = absint( $_POST['post_id'] );
+			$post_id = FrmAppHelper::get_post_param( 'post_id', '', 'absint' );
         }
 
-        if ( ! is_numeric($id) || ! is_numeric($post_id) ) {
-            return;
-        }
+		if ( ! is_numeric( $id ) || ! is_numeric( $post_id ) ) {
+			wp_die();
+		}
 
-        $post = get_post($post_id);
+        $post = get_post( $post_id );
+
+		$created_at         = $post->post_date_gmt;
+		$current_mysql_time = current_time( 'mysql', 1 );
+		if ( '0000-00-00 00:00:00' === $post->post_date_gmt ) {
+			// A draft post does not have a post date set so use the current time instead for the entry.
+			$created_at = $current_mysql_time;
+		}
 
         global $wpdb;
-        $values = array(
-            'description' => __( 'Copied from Post', 'formidable-pro' ),
-            'form_id'     => $id,
-            'created_at'  => $post->post_date_gmt,
-            'name'        => $post->post_title,
+		$values = array(
+			'description' => __( 'Copied from Post', 'formidable-pro' ),
+			'form_id'     => $id,
+			'created_at'  => $created_at,
+			'updated_at'  => $current_mysql_time,
+			'name'        => $post->post_title,
 			'item_key'    => FrmAppHelper::get_unique_key( $post->post_name, $wpdb->prefix . 'frm_items', 'item_key' ),
-            'user_id'     => $post->post_author,
-            'post_id'     => $post->ID,
-        );
+			'user_id'     => $post->post_author,
+			'post_id'     => $post->ID,
+		);
 
 		$results = $wpdb->insert( $wpdb->prefix . 'frm_items', $values );
         unset( $values );
@@ -1294,7 +1331,7 @@ class FrmProEntriesController {
         }
 
         $entry_id      = $wpdb->insert_id;
-        $user_id_field = FrmField::get_all_types_in_form($id, 'user_id', 1);
+        $user_id_field = FrmField::get_all_types_in_form( $id, 'user_id', 1 );
 
         if ( $user_id_field ) {
             $new_values = array(
@@ -2334,20 +2371,21 @@ class FrmProEntriesController {
 
         foreach ( $entries as $entry ) {
             $value = self::entry_link_meta_value($entry, $atts);
-            $link = self::entry_link_href($entry, $atts);
+            $link  = self::entry_link_href($entry, $atts);
 
-            $new_year = strftime('%G', strtotime($entry->created_at));
-            $new_month = strftime('%B', strtotime($entry->created_at));
+			$timestamp = strtotime( $entry->created_at );
+            $new_year  = date_i18n( 'Y', $timestamp );
+            $new_month = date_i18n( 'F', $timestamp );
             if ( $new_year != $year ) {
                 if ( $prev_year ) {
                     if ( $prev_month ) {
                         $content[] = '</ul></div>';
                     }
-                    $content[] = '</div>';
+                    $content[]  = '</div>';
                     $prev_month = false;
                 }
-				$class = $prev_year ? ' frm_hidden' : '';
-                $triangle = $prev_year ? 'e' : 's';
+				$class     = $prev_year ? ' frm_hidden' : '';
+                $triangle  = $prev_year ? 'e' : 's';
 				$content[] = "\n" . '<div class="frm_year_heading frm_year_heading_' . esc_attr( $atts['id'] ) . '">
 					<span class="ui-icon ui-icon-triangle-1-' . esc_attr( $triangle ) . '"></span>' . "\n" .
                     '<a>' . sanitize_text_field( $new_year ) . '</a></div>' . "\n" .
@@ -2359,9 +2397,9 @@ class FrmProEntriesController {
                 if ( $prev_month ) {
                     $content[] = '</ul></div>';
                 }
-				$class = $prev_month ? ' frm_hidden' : '';
-                $triangle = $prev_month ? 'e' : 's';
-				$content[] = '<div class="frm_month_heading frm_month_heading_' . esc_attr( $atts['id'] ) . '">
+				$class      = $prev_month ? ' frm_hidden' : '';
+                $triangle   = $prev_month ? 'e' : 's';
+				$content[]  = '<div class="frm_month_heading frm_month_heading_' . esc_attr( $atts['id'] ) . '">
 					<span class="ui-icon ui-icon-triangle-1-' . esc_attr( $triangle ) . '"></span>' . "\n" .
 					'<a>' . sanitize_text_field( $new_month ) . '</a>' . "\n" . '</div>' . "\n" .
 					'<div class="frm_toggle_container frm_month_listing' . esc_attr( $class ) . '"><ul>' . "\n";
@@ -2373,7 +2411,7 @@ class FrmProEntriesController {
 				$content[] = ' <a href="' . esc_url( add_query_arg( array( 'frm_action' => 'destroy', 'entry' => $entry->id ), $atts['permalink'] ) ) . '" class="frm_delete_list" data-frmconfirm="' . esc_attr( $atts['confirm'] ) . '">' . $atts['show_delete'] . '</a>' . "\n";
             }
             $content[] = "</li>\n";
-            $year = $new_year;
+            $year  = $new_year;
             $month = $new_month;
         }
 
@@ -2483,12 +2521,14 @@ class FrmProEntriesController {
 				'label'          => __( 'Edit', 'formidable-pro' ),
 				'cancel'         => __( 'Cancel', 'formidable-pro' ),
 				'class'          => '',
-				'page_id'        => ( $post ? $post->ID : 0 ), 'html_id' => false,
+				'page_id'        => ( $post ? $post->ID : 0 ),
+				'html_id'        => false,
 				'prefix'         => '',
 				'form_id'        => false,
 				'title'          => '',
 				'fields'         => array(),
 				'exclude_fields' => array(),
+				'start_page'     => 1,
 			),
 			$atts
 		);
@@ -2553,12 +2593,13 @@ class FrmProEntriesController {
 		self::load_form_scripts();
 
 		$data = array(
-			'entryid' => $entry_id,
-			'prefix'  => $atts['prefix'],
-			'pageid'  => $atts['page_id'],
-			'formid'  => $atts['form_id'],
-			'cancel'  => $atts['cancel'],
-			'edit'    => $atts['label'],
+			'entryid'   => $entry_id,
+			'prefix'    => $atts['prefix'],
+			'pageid'    => $atts['page_id'],
+			'formid'    => $atts['form_id'],
+			'cancel'    => $atts['cancel'],
+			'edit'      => $atts['label'],
+			'startpage' => $atts['start_page'],
 		);
 		if ( ! empty( $atts['fields'] ) ) {
 			$data['fields'] = implode( ',', (array) $atts['fields'] );
@@ -2723,6 +2764,7 @@ class FrmProEntriesController {
 				'format'       => '',
 				'return_array' => false,
 				'default'      => '',
+				'truncate'     => false,
 			),
 			$sc_atts
 		);
@@ -2750,6 +2792,12 @@ class FrmProEntriesController {
 			return $atts['default'];
 		}
 
+		$truncate = $atts['truncate'] && is_numeric( $atts['truncate'] ) && 1 !== (int) $atts['truncate'] ? $atts['truncate'] : false;
+		if ( $truncate ) {
+			// unset the attribute to avoid double truncating from FrmEntriesHelper::display_value
+			unset( $atts['truncate'] );
+		}
+
 		$values = array();
 		foreach ( $entries as $entry ) {
 			$value = self::get_single_field_value( $entry, $field, $atts );
@@ -2761,6 +2809,11 @@ class FrmProEntriesController {
 		$value = implode( ', ', $values );
 		if ( $value == '' ) {
 			$value = $atts['default'];
+		}
+
+		if ( $truncate ) {
+			$more_text = isset( $atts['more_text'] ) ? sanitize_text_field( $atts['more_text'] ) : '...';
+			$value     = FrmAppHelper::truncate( $value, $truncate, 3, $more_text );
 		}
 
 		return $value;
@@ -3113,20 +3166,7 @@ class FrmProEntriesController {
 				$frm_vars['ajax'] = true;
 				$frm_vars['css_loaded'] = true;
 
-				$include_fields = FrmProFormState::get_from_request( 'include_fields', array() );
-				if ( $include_fields ) {
-					$frm_vars['show_fields'] = $include_fields;
-				}
-
-				$exclude_fields = FrmProFormState::get_from_request( 'exclude_fields', array() );
-				if ( $exclude_fields ) {
-					FrmProFormsController::set_included_fields(
-						array(
-							'id'             => $form->id,
-							'exclude_fields' => $exclude_fields,
-						)
-					);
-				}
+				self::maybe_include_exclude_fields( $form->id );
 
 				// don't load scripts if we are going backwards in the form
 				$going_backwards = FrmProFormsHelper::going_to_prev( $form->id );
@@ -3140,7 +3180,15 @@ class FrmProEntriesController {
 					$response['page'] = FrmProFormsHelper::get_the_page_number( $form->id );
 				}
 
-				$response['content'] .= FrmFormsController::show_form( $form->id );
+				$get = FrmProFormState::get_from_request( 'get', array() );
+				if ( $get ) {
+					FrmProAppController::set_get( $get );
+				}
+
+				self::maybe_include_exclude_fields( $form->id );
+				$title                = FrmProFormState::get_from_request( 'title', false );
+				$description          = FrmProFormState::get_from_request( 'description', false );
+				$response['content'] .= FrmFormsController::show_form( $form->id, '', $title, $description );
 
 				// trigger the footer scripts if there is a form to show
 				if ( $errors || ! isset( $processed ) || ! empty( $frm_vars['forms_loaded'] ) ) {
@@ -3157,7 +3205,8 @@ class FrmProEntriesController {
 		} else {
 			$obj = array();
 			foreach ( $errors as $field => $error ) {
-				$field_id = str_replace( 'field', '', $field );
+				$field_id         = str_replace( 'field', '', $field );
+				$error            = self::maybe_modify_ajax_error( $error, $field_id, $form, $errors );
 				$obj[ $field_id ] = $error;
 			}
 			$response['errors'] = $obj;
@@ -3183,6 +3232,64 @@ class FrmProEntriesController {
 		wp_die();
 	}
 
+	/**
+	 * If a field has custom HTML for errors, apply it around the message.
+	 *
+	 * @since 5.0.03
+	 *
+	 * @param string   $error
+	 * @param string   $field_id
+	 * @param stdClass $form the form being submitted (not necessarily the field's form when embedded/repeated).
+	 * @param array    $errors all errors that were caught in this form submission, passed into the frm_before_replace_shortcodes filter for reference.
+	 * @return string
+	 */
+	private static function maybe_modify_ajax_error( $error, $field_id, $form, $errors ) {
+		if ( ! is_callable( 'FrmFieldsController::pull_custom_error_body_from_custom_html' ) ) {
+			// this function only exists since formidable lite 5.0.03
+			// if the lite version has not been updated, leave the error unmodified.
+			return $error;
+		}
+
+		if ( false !== strpos( $field_id, '-' ) ) {
+			// repeated fields look like field_id-repeater_id-iteration, so pull the first value for the field id.
+			list( $use_field_id ) = explode( '-', $field_id );
+		} else {
+			$use_field_id = $field_id;
+		}
+
+		if ( ! is_numeric( $use_field_id ) ) {
+			return $error;
+		}
+
+		$use_field = FrmField::getOne( $use_field_id );
+
+		if ( ! $use_field ) {
+			return $error;
+		}
+
+		$use_field  = FrmFieldsHelper::setup_edit_vars( $use_field );
+		$error_body = FrmFieldsController::pull_custom_error_body_from_custom_html( $form, $use_field, $errors );
+
+		if ( false !== $error_body ) {
+			$error = str_replace( '[error]', $error, $error_body );
+			$error = str_replace( '[key]', $field_id, $error );
+		}
+
+		return $error;
+	}
+
+	/**
+	 * @param int $form_id
+	 * @return void
+	 */
+	public static function maybe_include_exclude_fields( $form_id ) {
+		$include_fields = FrmProFormState::get_from_request( 'include_fields', array() );
+		if ( $include_fields ) {
+			global $frm_vars;
+			$frm_vars['show_fields'] = $include_fields;
+		}
+	}
+
 	public static function setup_edit_vars( $values ) {
         if ( ! isset( $values['edit_value'] ) ) {
 			$values['edit_value'] = ( $_POST && isset( $_POST['options']['edit_value'] ) ) ? wp_kses_post( $_POST['options']['edit_value'] ) : __( 'Update', 'formidable-pro' );
@@ -3202,10 +3309,11 @@ class FrmProEntriesController {
 
 	public static function edit_entry_ajax() {
 		$id             = FrmAppHelper::get_param( 'id', '', 'post', 'absint' );
-		$entry_id       = FrmAppHelper::get_param('entry_id', 0, 'post', 'absint' );
+		$entry_id       = FrmAppHelper::get_param( 'entry_id', 0, 'post', 'absint' );
 		$post_id        = FrmAppHelper::get_param( 'post_id', 0, 'post', 'sanitize_title' );
 		$fields         = FrmAppHelper::get_param( 'fields', array(), 'post', 'sanitize_text_field' );
 		$exclude_fields = FrmAppHelper::get_param( 'exclude_fields', array(), 'post', 'sanitize_text_field' );
+		$start_page     = FrmAppHelper::get_param( 'start_page', 1, 'post', 'absint' );
 
 		global $frm_vars;
 		$frm_vars['footer_loaded'] = true;
@@ -3215,20 +3323,212 @@ class FrmProEntriesController {
 			$_GET['entry'] = $entry_id;
 		}
 
-		if ( $post_id && is_numeric($post_id) ) {
+		if ( $post_id && is_numeric( $post_id ) ) {
 			global $post;
 			if ( ! $post ) {
-				$post = get_post($post_id);
+				$post = get_post( $post_id );
 			}
 		}
 
 		FrmProFormsController::mark_jquery_as_loaded();
 
-		echo FrmFormsController::get_form_shortcode( compact( 'id', 'entry_id', 'fields', 'exclude_fields' ) );
+		$atts = compact( 'id', 'entry_id', 'fields', 'exclude_fields' );
+
+		if ( 1 !== $start_page ) {
+			self::maybe_set_page_from_attribute( $id, $start_page );
+		} else {
+			self::maybe_set_page( $atts );
+		}
+
+		echo FrmFormsController::get_form_shortcode( $atts );
 
 		FrmProFormsController::print_ajax_scripts( 'all' );
 
 		wp_die();
+	}
+
+	/**
+	 * @param int $form_id
+	 * @param int $start_page
+	 * @return void
+	 */
+	public static function maybe_set_page_from_attribute( $form_id, $start_page ) {
+		$start_page_order = self::get_order_of_start_page_attribute( $form_id, $start_page );
+		if ( $start_page_order > 1 ) {
+			self::set_page( $form_id, $start_page_order );
+		}
+	}
+
+	/**
+	 * @param int $form_id
+	 * @param int $page
+	 * @return int
+	 */
+	private static function get_order_of_start_page_attribute( $form_id, $page ) {
+		$page_break_orders = self::get_page_break_orders( $form_id );
+		$index             = $page - 2; // offset by 2 because the first page break is not a real field and arrays are 0 indexed.
+		return array_key_exists( $index, $page_break_orders ) ? $page_break_orders[ $index ] : 1;
+	}
+
+	/**
+	 * @param int $form_id
+	 * @param int $page_break_order
+	 */
+	private static function set_page( $form_id, $page_break_order ) {
+		$_POST[ 'frm_page_order_' . $form_id ] = $page_break_order;
+	}
+
+	/**
+	 * @param array $atts including keys id (form id), entry_id, fields, exclude_fields.
+	 */
+	private static function maybe_set_page( $atts ) {
+		$page = self::get_page_from_attributes( $atts );
+		if ( 1 !== $page ) {
+			self::set_page( $atts['id'], $page );
+		}
+	}
+
+	/**
+	 * @param array $atts including keys id (form id), entry_id, fields, exclude_fields.
+	 * @return int the page break field order to start on.
+	 */
+	private static function get_page_from_attributes( $atts ) {
+		$page = 1;
+
+		if ( empty( $atts['id'] ) || ( empty( $atts['fields'] ) && empty( $atts['exclude_fields'] ) ) ) {
+			// return the first page if information is missing or all fields are present.
+			return $page;
+		}
+
+		$form_id           = $atts['id'];
+		$page_break_orders = self::get_page_break_orders( $form_id );
+
+		if ( ! $page_break_orders ) {
+			// stop if there are no page breaks for this form.
+			return $page;
+		}
+
+		$first_field_order = self::get_order_of_first_field( $atts );
+
+		foreach ( $page_break_orders as $page_break_order ) {
+			if ( $page_break_order > $first_field_order ) {
+				break;
+			}
+			$page = $page_break_order;
+		}
+
+		return $page;
+	}
+
+	/**
+	 * @param int $form_id
+	 * @return array<int> field orders for all page break fields.
+	 */
+	private static function get_page_break_orders( $form_id ) {
+		return FrmDb::get_col(
+			'frm_fields',
+			array(
+				'type'    => 'break',
+				'form_id' => $form_id,
+			),
+			'field_order',
+			array(
+				'order_by' => 'field_order',
+			)
+		);
+	}
+
+	/**
+	 * Get the field_order of the first field based off of what is included and excluded with field attributes.
+	 *
+	 * @param array $atts including keys id (form id), entry_id, fields, exclude_fields.
+	 * @return int the lowest field_order value from the set of fields.
+	 */
+	private static function get_order_of_first_field( $atts ) {
+		$includes = ! empty( $atts['fields'] ) ? self::create_id_key_condition_pair( $atts['fields'] ) : array();
+		$excludes = ! empty( $atts['exclude_fields'] ) ? self::create_id_key_condition_pair( $atts['exclude_fields'], false ) : array();
+		$where    = self::build_where_for_first_field_check( $atts['id'], $includes, $excludes );
+		$args     = array( 'order_by' => 'field_order' );
+		return FrmDb::get_var( 'frm_fields', $where, 'field_order', $args );
+	}
+
+	/**
+	 * @param array|string $fields
+	 * @param bool         $include
+	 * @return array
+	 */
+	private static function create_id_key_condition_pair( $fields, $include = true ) {
+		$fields = self::maybe_explode( $fields );
+		$ids    = self::pull_ids( $fields );
+		$keys   = self::pull_keys( $fields );
+		$pair   = array();
+		$suffix = $include ? '' : ' not';
+
+		if ( $ids ) {
+			$pair[ 'id' . $suffix ] = $ids;
+		}
+
+		if ( $keys ) {
+			$pair[ 'field_key' . $suffix ] = $keys;
+			if ( $ids ) {
+				$pair['or'] = 1;
+			}
+		}
+
+		return $pair;
+	}
+
+	/**
+	 * @param int $form_id
+	 * @param array $includes
+	 * @param array $excludes
+	 * @return array
+	 */
+	private static function build_where_for_first_field_check( $form_id, $includes, $excludes ) {
+		$where = array();
+
+		if ( $includes ) {
+			$where[] = $includes;
+		}
+
+		if ( $excludes ) {
+			$where[] = $excludes;
+		}
+
+		$where[] = array(
+			'form_id' => $form_id,
+			'type !'  => 'break',
+		);
+
+		return $where;
+	}
+
+	/**
+	 * @param array|string $ids
+	 */
+	private static function maybe_explode( $ids ) {
+		return is_array( $ids ) ? $ids : explode( ',', $ids );
+	}
+
+	/**
+	 * @param array $values
+	 * @return array<int> ids
+	 */
+	private static function pull_ids( $values ) {
+		return array_filter( $values, 'is_numeric' );
+	}
+
+	/**
+	 * @param array $values
+	 * @return array<string> keys
+	 */
+	private static function pull_keys( $values ) {
+		return array_filter(
+			$values,
+			function( $value ) {
+				return ! is_numeric( $value );
+			}
+		);
 	}
 
 	public static function update_field_ajax() {
@@ -3251,6 +3551,74 @@ class FrmProEntriesController {
 	public static function redirect_url( $url ) {
 		$url = str_replace( array( ' ', '[', ']', '|', '@' ), array( '%20', '%5B', '%5D', '%7C', '%40' ), $url );
 		return $url;
+	}
+
+	/**
+	 * @param stdClass $field
+	 * @return bool
+	 */
+	public static function field_column_is_sortable( $sortable, $field ) {
+		if ( ! $sortable && ! empty( $field->field_options['post_field'] ) ) {
+			$sortable_options = array( 'post_title', 'post_content', 'post_excerpt', 'post_name', 'post_date', 'post_custom', 'post_status' );
+			$sortable         = in_array( $field->field_options['post_field'], $sortable_options, true );
+		}
+		return $sortable;
+	}
+
+	/**
+	 * @param string $sort
+	 * @param int    $field_id
+	 * @param array  $field_options
+	 * @return string
+	 */
+	public static function handle_field_column_sort( $sort, $field_id, $field_options ) {
+		if ( '' !== $sort || empty( $field_options['post_field'] ) ) {
+			return $sort;
+		}
+
+		global $wpdb;
+
+		if ( 'post_custom' === $field_options['post_field'] ) {
+			if ( empty( $field_options['custom_field'] ) ) {
+				return '';
+			}
+
+			$meta_key = sanitize_key( $field_options['custom_field'] );
+			return ', (SELECT m.meta_value FROM ' . $wpdb->prefix . 'postmeta m INNER JOIN ' . $wpdb->prefix . 'frm_items i ON i.post_id=m.post_id WHERE m.meta_key = "' . esc_sql( $meta_key ) . '" AND i.id = it.id) as meta_' . $field_id;
+		}
+
+		$column = sanitize_key( $field_options['post_field'] );
+		return ', (SELECT p.' . $column . ' FROM ' . $wpdb->prefix . 'posts p INNER JOIN ' . $wpdb->prefix . 'frm_items i ON i.post_id=p.ID WHERE i.id = it.id) as meta_' . $field_id;
+	}
+
+	/**
+	 * AJAX handler for deleting draft entry.
+	 *
+	 * @since 5.4
+	 */
+	public static function delete_draft_entry_ajax() {
+		check_ajax_referer( 'frm_ajax' );
+
+		$form_id = FrmAppHelper::get_post_param( 'form', 0, 'intval' );
+		if ( ! $form_id ) {
+			wp_send_json_error();
+		}
+
+		$user_id = get_current_user_id();
+
+		global $wpdb;
+
+		$wpdb->delete(
+			$wpdb->prefix . 'frm_items',
+			array(
+				'is_draft' => 1,
+				'form_id'  => $form_id,
+				'user_id'  => $user_id,
+			),
+			array( '%d', '%d', '%d' )
+		);
+
+		wp_send_json_success();
 	}
 
 	/**
@@ -3358,4 +3726,14 @@ class FrmProEntriesController {
 	public static function register_widgets() {
 		return FrmProDisplaysController::deprecated_function( __METHOD__, 'FrmViewsDisplaysController::register_widgets' );
     }
+
+	/**
+	 * @deprecated x.x
+	 */
+	public static function data_sort( $options ) {
+		_deprecated_function( __FUNCTION__, 'x.x', 'FrmProFieldsController::order_values' );
+		natcasesort($options);
+
+		return $options;
+	}
 }

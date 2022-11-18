@@ -9,7 +9,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	FrmAppHelper::get_admin_header( array(
 		'label' => __( 'Reports', 'formidable-pro' ),
 		'form'  => $form,
-		'close' => remove_query_arg( 'frm-full' ),
 	) );
 
 	$class = 'odd';
@@ -48,10 +47,10 @@ if ( ! defined( 'ABSPATH' ) ) {
                 continue;
             }
 
-            $total = FrmProStatisticsController::stats_shortcode( array( 'id' => $field->id, 'type' => 'count' ) );
-            if ( ! $total ) {
-                continue;
-            }
+			$post_boxes = self::get_field_boxes( compact( 'field', 'entries' ) );
+			if ( empty( $post_boxes ) ) {
+				continue;
+			}
             ?>
 			<div class="frm_report_box pg_<?php echo esc_attr( $class ); ?>" data-ftype="<?php echo esc_attr( $field->type ); ?>">
 				<h2 class="frm-h2">
@@ -65,38 +64,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<?php } ?>
 
 				<div class="frmcenter" style="margin-top:20px;">
+				<?php foreach ( $post_boxes as $box ) { ?>
 				<div class="postbox">
 					<div class="inside">
-						<h3><?php esc_html_e( 'Answered', 'formidable-pro' ); ?></h3>
-						<?php echo esc_html( $total ); ?>
-						(<?php echo round( ( $total / count( $entries ) ) * 100, 2 ); ?>%)
+						<h3><?php echo esc_html( $box['label'] ); ?></h3>
+						<?php echo esc_html( $box['stat'] ); ?>
 					</div>
 				</div>
-			<?php if ( in_array( $field->type, array( 'number', 'hidden', 'scale' ) ) ) { ?>
-				<div class="postbox">
-					<div class="inside">
-						<h3><?php esc_html_e( 'Average', 'formidable-pro' ); ?></h3>
-						<?php
-						echo FrmProStatisticsController::stats_shortcode( array(
-							'id' => $field->id,
-							'type' => 'average',
-						) );
-						?>
-					</div>
-				</div>
+				<?php } ?>
 
-				<div class="postbox">
-					<div class="inside">
-						<h3><?php esc_html_e( 'Median', 'formidable-pro' ); ?></h3>
-						<?php
-						echo FrmProStatisticsController::stats_shortcode( array(
-							'id' => $field->id,
-							'type' => 'median',
-						) );
-						?>
-					</div>
-				</div>
-            <?php } ?>
+				<?php
+				/**
+				 * Fires after the field report.
+				 *
+				 * @since 5.0.02
+				 *
+				 * @param array $args The arguments. Contains `field`..
+				 */
+				do_action( 'frm_pro_after_field_report', compact( 'field' ) );
+				?>
 			</div>
 
             <div class="clear"></div>

@@ -115,6 +115,6 @@ class FrmProEntryValues extends FrmEntryValues {
 			'exclude_fields' => $this->exclude_fields,
 		);
 
-		$this->field_values[ $field->id ] = new FrmProFieldValue( $field, $this->entry, $atts );
+		$this->field_values[ $field->id ] = new FrmProFieldValue( $field, $this->entry );
 	}
 }

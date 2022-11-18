@@ -985,22 +985,12 @@ class FrmProLookupFieldsController {
 	 *
 	 * @since 2.01.0
 	 * @param string $order
-	 * @param array $final_values
+	 * @param array $options
 	 */
-	private static function order_values( $order, &$final_values ) {
-		if ( ! $final_values ) {
-			return;
-		}
-
-		if ( $order == 'ascending' || $order == 'descending' ) {
-			natcasesort( $final_values );
-			if ( $order == 'descending' ) {
-				$final_values = array_reverse( $final_values );
-			}
-			$final_values = array_values( $final_values );
-		}
-
-		$final_values = apply_filters( 'frm_order_lookup_options', $final_values, $order );
+	private static function order_values( $order, &$options ) {
+		$options = FrmProFieldsController::order_values( $options, array( 'dynamic_field' => array( 'option_order' => $order ) ) );
+		$options = array_values( $options );
+		$options = apply_filters( 'frm_order_lookup_options', $options, $order );
 	}
 
 	/**

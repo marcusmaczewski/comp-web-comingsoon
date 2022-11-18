@@ -16,8 +16,17 @@ class FrmProImages {
 	 * @return bool
 	 */
 	public static function has_image_options( $field ) {
-		$is_type = FrmField::is_field_type( $field, 'radio' ) || FrmField::is_field_type( $field, 'checkbox' );
-		return $is_type && self::should_show_images( $field );
+		return self::field_type_support_image_options( $field ) && self::should_show_images( $field );
+	}
+
+	/**
+	 * @since 5.0.06
+	 *
+	 * @param array $field
+	 * @return bool
+	 */
+	private static function field_type_support_image_options( $field ) {
+		return FrmField::is_field_type( $field, 'radio' ) || FrmField::is_field_type( $field, 'checkbox' );
 	}
 
 	public static function has_images_options_in_html( $options ) {
@@ -68,17 +77,30 @@ class FrmProImages {
 	 * Called by hook in lite.
 	 */
 	public static function admin_options( $atts ) {
-		$field   = $atts['field'];
+		$field = $atts['field'];
+
+		if ( ! self::field_type_support_image_options( $field ) ) {
+			return;
+		}
+
 		$opt_key = $atts['opt_key'];
 		$opt     = isset( $field['options'][ $opt_key ] ) ? $field['options'][ $opt_key ] : '';
 		$return  = array( 'filename' );
 		$image   = self::single_option_details( compact( 'opt', 'opt_key', 'field', 'return' ) );
 		$opt     = FrmFieldsHelper::get_label_from_array( $opt, $opt_key, $field );
+
 		if ( ! isset( $field['image_options'] ) ) {
 			$field['image_options'] = 0;
 		}
 
-		include( FrmProAppHelper::plugin_path() . '/classes/views/frmpro-fields/back-end/image-selector.php' );
+		include self::get_backend_fields_path() . 'image-selector.php';
+	}
+
+	/**
+	 * @return string
+	 */
+	private static function get_backend_fields_path() {
+		return FrmProAppHelper::plugin_path() . '/classes/views/frmpro-fields/back-end/';
 	}
 
 	/**

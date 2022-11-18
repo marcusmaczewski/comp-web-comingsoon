@@ -7,12 +7,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 class FrmProFileImport {
 
 	public static function import_attachment( $val, $field ) {
-		if ( $field->type != 'file' || is_numeric( $val ) || empty( $val ) ) {
+		if ( $field->type !== 'file' || is_numeric( $val ) || ! $val ) {
 			return $val;
 		}
 
-		$should_import_files = FrmAppHelper::get_param( 'csv_files', '', 'REQUEST', 'absint' );
-		if ( ! $should_import_files ) {
+		if ( ! self::should_import_files() ) {
 			return $val;
 		}
 
@@ -49,6 +48,34 @@ class FrmProFileImport {
 		$val = self::convert_to_string( $new_val );
 
 		return $val;
+	}
+
+	/**
+	 * @since 5.4.4
+	 *
+	 * @return bool
+	 */
+	private static function should_import_files() {
+		$should_import_files = (bool) FrmAppHelper::get_param( 'csv_files', '', 'REQUEST', 'absint' );
+
+		/**
+		 * @since 5.4.4
+		 *
+		 * @param bool $should_import_files
+		 */
+		return apply_filters( 'frm_should_import_files', $should_import_files );
+	}
+
+	/**
+	 * Return true when this filter is set. frm_should_import_files is false by default and can be temporarily toggled on with this filter.
+	 * To revert this filter after use make sure to also use remove_filter( 'frm_should_import_files', 'FrmProFileImport::allow_file_import' );
+	 *
+	 * @since 5.4.4
+	 *
+	 * @return true
+	 */
+	public static function allow_file_import() {
+		return true;
 	}
 
 	/**
@@ -98,6 +125,7 @@ class FrmProFileImport {
 		$user_agent = apply_filters( 'http_headers_useragent', 'WordPress/' . get_bloginfo( 'version' ) . '; ' . get_bloginfo( 'url' ) );
 		curl_setopt( $ch, CURLOPT_USERAGENT, $user_agent );
 		curl_setopt( $ch, CURLOPT_REFERER, FrmAppHelper::site_url() );
+		curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, true );
 		$result = curl_exec( $ch );
 		curl_close( $ch );
 		fclose( $fp );

@@ -36,6 +36,7 @@ class FrmProFieldScale extends FrmFieldType {
 		$opts = array(
 			'minnum' => 1,
 			'maxnum' => 10,
+			'step'   => 1,
 		);
 
 		$options = $this->get_field_column('options');

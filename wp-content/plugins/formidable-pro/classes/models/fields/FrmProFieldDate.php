@@ -75,13 +75,40 @@ class FrmProFieldDate extends FrmFieldType {
 			if ( isset( $upgrading['url'] ) ) {
 				$install_data = json_encode( $upgrading );
 				$class        = '';
+				$requires     = '';
+			} else {
+				$requires = self::get_dates_add_on_required_plan();
 			}
 		}
 
 		$locales = FrmAppHelper::locales( 'date' );
-		include( FrmProAppHelper::plugin_path() . '/classes/views/frmpro-fields/back-end/dates-advanced.php' );
+		include FrmProAppHelper::plugin_path() . '/classes/views/frmpro-fields/back-end/dates-advanced.php';
 
 		parent::show_options( $field, $display, $values );
+	}
+
+	/**
+	 * Get required plan for Dates add on.
+	 *
+	 * @since 5.3
+	 *
+	 * @return string Empty string if no plan is required for active license.
+	 */
+	private static function get_dates_add_on_required_plan() {
+		$api      = new FrmFormApi();
+		$addons   = $api->get_api_info();
+		$dates_id = 20247260;
+
+		if ( is_array( $addons ) && array_key_exists( $dates_id, $addons ) ) {
+			$dates    = $addons[ $dates_id ];
+			$requires = FrmFormsHelper::get_plan_required( $dates );
+		}
+
+		if ( ! isset( $requires ) || ! is_string( $requires ) ) {
+			$requires = '';
+		}
+
+		return $requires;
 	}
 
 	/**
@@ -250,11 +277,17 @@ class FrmProFieldDate extends FrmFieldType {
 		return $value;
 	}
 
+	/**
+	 * @param mixed $value
+	 * @param array $atts
+	 * @return string
+	 */
 	protected function prepare_import_value( $value, $atts ) {
-		if ( ! empty( $value ) ) {
+		if ( ! is_string( $value ) || empty( $value ) ) {
+			$value = '';
+		} else {
 			$value = gmdate( 'Y-m-d', strtotime( $value ) );
 		}
-
 		return $value;
 	}
 

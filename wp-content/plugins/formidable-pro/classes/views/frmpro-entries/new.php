@@ -27,7 +27,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<?php if ( empty( $values ) ) { ?>
 				<p class="frm_error_style frm_form_fields">
 					<strong><?php esc_html_e( 'Oops!', 'formidable-pro' ); ?></strong>
-					<?php printf( __( 'You did not add any fields to your form. %1$sGo back%2$s and add some.', 'formidable-pro' ), '<br/><a href="' . esc_url( admin_url('?page=formidable&frm_action=edit&id=' . $form->id ) ) . '">', '</a>') ?>
+					<?php printf( __( 'You did not add any fields to your form. %1$sGo back%2$s and add some.', 'formidable-pro' ), '<br/><a href="' . esc_url( admin_url('?page=formidable&frm_action=edit&id=' . $form->id ) ) . '">', '</a>'); ?>
 				</p>
 				<?php
         	} else {
@@ -40,8 +40,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 			<p>
 				<?php echo FrmProFormsHelper::get_prev_button($form, 'button-secondary'); ?>
-				<input class="button-primary" type="submit" value="<?php echo esc_attr($submit) ?>" <?php do_action('frm_submit_button_action', $form, $form_action); ?> />
+				<input class="button-primary" type="submit" value="<?php echo esc_attr($submit); ?>" <?php do_action('frm_submit_button_action', $form, $form_action); ?> />
 				<?php echo FrmProFormsHelper::get_draft_link($form); ?>
+				<?php echo FrmProFormsHelper::get_start_over_html( $form ); ?>
 			</p>
 			<div class="clear"></div>
 				<?php
@@ -49,7 +50,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 			?>
 			</div>
 			</div>
-			<div class="frm-right-panel"></div>
 		</div>
 	</div>
 </div>

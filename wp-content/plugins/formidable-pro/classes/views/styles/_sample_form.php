@@ -8,13 +8,13 @@ if ( ! defined( 'ABSPATH' ) ) {
     <div>
         <div class="frm_repeat_sec">
 
-			<div class="frm_form_field form-field <?php echo esc_attr( $pos_class ) ?>">
+			<div class="frm_form_field form-field <?php echo esc_attr( $pos_class ); ?>">
 				<label class="frm_primary_label"><?php esc_html_e( 'Text Area', 'formidable-pro' ); ?></label>
 				<textarea></textarea>
 				<div class="frm_description"><?php esc_html_e( 'Another field with a description', 'formidable-pro' ); ?></div>
 			</div>
 
-			<div class="frm_form_field form-field frm_half frm_first <?php echo esc_attr( $pos_class ) ?>">
+			<div class="frm_form_field form-field frm_half frm_first <?php echo esc_attr( $pos_class ); ?>">
 				<label class="frm_primary_label"><?php esc_html_e( 'Radio Buttons', 'formidable-pro' ); ?></label>
 				<div class="frm_opt_container">
 					<div class="frm_radio">
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				</div>
 			</div>
 
-			<div class="frm_form_field form-field frm_half <?php echo esc_attr( $pos_class ) ?>">
+			<div class="frm_form_field form-field frm_half <?php echo esc_attr( $pos_class ); ?>">
 				<label class="frm_primary_label"><?php esc_html_e( 'Check Boxes', 'formidable-pro' ); ?></label>
 				<div class="frm_opt_container">
 					<div class="frm_checkbox"><label><input type="checkbox" />
@@ -41,12 +41,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</div>
             <div class="frm_form_field frm_repeat_buttons frm_hidden_container">
 				<a href="javascript:void(0)" class="frm_button">
-					<i class="frm_icon_font frm_minus_icon"> </i>
-					<?php esc_html_e( 'Remove', 'formidable-pro' ); ?>
-				</a>
-				<a href="javascript:void(0)" class="frm_button">
 					<i class="frm_icon_font frm_plus_icon"> </i>
 					<?php esc_html_e( 'Add', 'formidable-pro' ); ?>
+				</a>
+				<a href="javascript:void(0)" class="frm_button">
+					<i class="frm_icon_font frm_minus_icon"> </i>
+					<?php esc_html_e( 'Remove', 'formidable-pro' ); ?>
 				</a>
             </div>
         </div>
@@ -58,7 +58,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     <div class="frm_toggle_container">
 
 		<div class="frm_form_field form-field">
-			<div id="datepicker_sample" style="margin-bottom:<?php echo esc_attr( $style->post_content['field_margin'] ) ?>;"></div>
+			<div id="datepicker_sample" class="frm-datepicker" style="margin-bottom:<?php echo esc_attr( $style->post_content['field_margin'] ); ?>;"></div>
 		</div>
 
     </div>
@@ -68,7 +68,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     <h3 class="frm_pos_top frm_section_spacing"> </h3>
 </div>
 
-<div class="frm_form_field form-field frm_first frm_third <?php echo esc_attr( $pos_class ) ?>">
+<div class="frm_form_field form-field frm_first frm_third <?php echo esc_attr( $pos_class ); ?>">
 	<label for="field_toggle" class="frm_primary_label">
 		<?php esc_html_e( 'Toggle', 'formidable-pro' ); ?>
 	</label>
@@ -83,7 +83,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	</div>
 </div>
 
-<div class="frm_form_field form-field frm_two_thirds <?php echo esc_attr( $pos_class ) ?>">
+<div class="frm_form_field form-field frm_two_thirds <?php echo esc_attr( $pos_class ); ?>">
 	<label for="field_slider" class="frm_primary_label">
 		<?php esc_html_e( 'Slider', 'formidable-pro' ); ?>
 	</label>
@@ -112,8 +112,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<input type="button" value="3" class="frm_page_skip" disabled="disabled" />
 		</li>
 	</ul>
-	<div class="frm_percent_complete"><?php echo esc_html( sprintf( __( '%s Complete', 'formidable-pro' ), '33%' ) ) ?></div>
-	<div class="frm_pages_complete"><?php echo esc_html( sprintf( __( '%1$d of %2$d', 'formidable-pro' ), 2, 3 ) ) ?></div>
+	<div class="frm_percent_complete"><?php echo esc_html( sprintf( __( '%s Complete', 'formidable-pro' ), '33%' ) ); ?></div>
+	<div class="frm_pages_complete"><?php echo esc_html( sprintf( __( '%1$d of %2$d', 'formidable-pro' ), 2, 3 ) ); ?></div>
 	<div class="frm_clearfix"></div>
 </div>
 

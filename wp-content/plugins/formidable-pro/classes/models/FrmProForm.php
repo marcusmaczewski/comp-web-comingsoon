@@ -6,7 +6,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class FrmProForm {
 
-	public static function update_options( $options, $values ) {
+	/**
+	 * Modifies form options when updating or creating.
+	 *
+	 * @since 5.4 Added the third param.
+	 *
+	 * @param array $options Form options.
+	 * @param array $values  Form data.
+	 * @param bool  $update  Is form updating or creating. It's `true` if is updating.
+	 * @return array
+	 */
+	public static function update_options( $options, $values, $update = false ) {
 		self::fill_option_defaults( $options, $values );
 
 		if ( isset( $values['id'] ) ) {
@@ -18,6 +28,18 @@ class FrmProForm {
 			);
 		}
 
+		if ( isset( $options['draft_label'] ) ) {
+			$options['draft_label'] = sanitize_text_field( $options['draft_label'] );
+		}
+
+		if ( isset( $options['edit_value'] ) ) {
+			$options['edit_value'] = sanitize_text_field( $options['edit_value'] );
+		}
+
+		if ( is_callable( 'FrmAppHelper::maybe_filter_array' ) ) {
+			$options = FrmAppHelper::maybe_filter_array( $options, array( 'edit_msg', 'draft_msg' ) );
+		}
+
 		$options['single_entry'] = ( isset( $values['options']['single_entry'] ) ) ? $values['options']['single_entry'] : 0;
 		if ( $options['single_entry'] ) {
 			$options['single_entry_type'] = ( isset( $values['options']['single_entry_type'] ) ) ? $values['options']['single_entry_type'] : 'cookie';
@@ -27,7 +49,27 @@ class FrmProForm {
 			$options['copy'] = isset( $values['options']['copy'] ) ? $values['options']['copy'] : 0;
 		}
 
+		if ( $update ) {
+			self::maybe_add_start_over_shortcode( $options );
+		}
+
 		return $options;
+	}
+
+	/**
+	 * Maybe add start over button shortcode to the Submit button setting if it's missing.
+	 *
+	 * @since 5.4
+	 *
+	 * @param array $options Form options.
+	 */
+	private static function maybe_add_start_over_shortcode( &$options ) {
+		if ( empty( $options['start_over'] ) || false !== strpos( $options['submit_html'], '[if start_over]' ) ) {
+			return;
+		}
+
+		$start_over_shortcode   = FrmFormsHelper::get_start_over_shortcode();
+		$options['submit_html'] = preg_replace( '~\<\/div\>(?!.*\<\/div\>)~', $start_over_shortcode . "\r\n</div>", $options['submit_html'] );
 	}
 
 	/**
@@ -103,8 +145,8 @@ class FrmProForm {
 	}
 
 	/**
-	 * @param int $form_id
-	 * @return array
+	 * @param array<int> $file_ids
+	 * @return array<string>
 	 */
 	private static function get_all_file_folders_for_form( $file_ids ) {
 		$file_folders = array();
