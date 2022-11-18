@@ -9,8 +9,8 @@
 	    {
 
 	    	$title 					= __('Hero', 'layback');
-	    	$description 			= __('Hero block', 'layback');
-	    	$tags 					=	array('Hero');
+	    	$description 			= __('Hero Block', 'layback');
+	    	$tags 					=	array('hero');
 	    	$align 					= array('wide', 'full');
 	    	$render 				= 'hero_block_render_callback';
 
@@ -44,6 +44,8 @@
 		$block_id 			= $block['id'];
 		$block_title 		= strtolower(str_replace(" ","_",$block['title']));
 		$block_filename 	= pathinfo(__FILE__, PATHINFO_FILENAME);
+
+		$products_partners = true;
 		
 		if( !empty($block['align']) ) {
 			$block_align 	= $block['align'];
@@ -52,64 +54,59 @@
 	  ?>
 	
 	    <div id="<?php echo $block_id; ?>" class="lb-block <?php if( !empty($block_align) ) { echo 'align-' . $block_align; } ?> block-<?php echo $block_name; ?>">
-			<?php 
-				if( have_rows('slideshow') ) :
-					while ( have_rows('slideshow') ) : the_row();
-						$img_video		= get_sub_field('img_video');
-						$mp4 			= get_sub_field('mp4');
-						$webm 			= get_sub_field('webm');
-						$img 			= get_sub_field('img');
-						$title 			= get_sub_field('title');
-						$description 	= get_sub_field('description');
-						$link 			= get_sub_field('link');
+
+			<div class="meteor_container">
+				<div class="meteor"></div>
+			</div>
+
+			<div class="inner">
+				<div class="wrapper">
+
+					<div class="title">
+						<?php _e( 'We make cool products. Like <b>really</b> cool.', 'layback' ); ?>
+					</div>
+
+					<div class="actions">
+						<button class="btn round"><?php _e( 'Get in touch', 'layback' ); ?></button>
+					</div>
+
+				</div>
+			</div>
+
+			<?php if($products_partners) : ?>
+				<div class="products_and_partners">
+					<div class="title"><?php _e( 'Products & Partners', 'layback' ); ?></div>
+					<div class="slider">
+						<?php
+							for ($i=0; $i < 10 ; $i++) { 
+								?>
+									<div class="slider_item"></div>
+								<?php
+							}
 						?>
+					</div>
+				</div>
+			<?php endif; ?>
 
-						<div class="slide">
-							<?php 
-								if($img_video === 'video')
-								{
-									?>
-										<video autoplay loop muted>
-											<?php if($mp4) : ?>
-												<source src="<?php echo $mp4['url']; ?>" type="video/mp4">
-											<?php endif; ?>
+			<div class="lines">
+				<?php
+				
+					for ($i=0; $i <= 5; $i++) { 
+						?>
+							<div class="line"></div>
+						<?php
+					}
+				
+				?>
+			</div>
 
-											<?php if($webm) : ?>
-												<source src="<?php echo $webm['url']; ?>" type="video/webm">
-											<?php endif; ?>
-
-											Your browser does not support the video tag.
-										</video>
-									<?php 
-								}
-
-								if($img_video === 'img')
-								{
-									$srcset = wp_get_attachment_image_srcset($img['ID']);
-									?>
-										<img src="<?php echo $img['url']; ?>" srcset="<?php echo $srcset; ?>">
-									<?php 
-								}
-							?>
-								
-								<div class="inner">			
-									<h1><?php echo $title; ?></h1>
-									<p><?php echo $description; ?></p>
-									<?php if($link) : ?>
-										<a href="<?php echo $link['url']; ?>" class="btn"><?php echo $link['title']; ?></a>
-									<?php endif; ?>
-								</div>
-
-								<a href="#hero-scroll" class="scroll-down">
-									<div class="mouse">
-										<div class="scroller"></div>
-									</div>				
-								</a>
-							</div>
-						<?php 
-					endwhile;
-				endif; 
-			?>				
+			<div class="earth">
+				<?php
+				
+					$path = get_stylesheet_directory_uri() . '/partials/blocks/' . $block_name . '/earth.png';
+				?>
+				<img src="<?php echo $path; ?>" alt="Earth">
+			</div>
 	    </div>
     
     <?php }

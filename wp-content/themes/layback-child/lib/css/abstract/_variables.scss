@@ -1,10 +1,12 @@
 
 // Colors
-$primary:						#323232;
+$primary:						#DD1E76;
 $darkgray:						#363636;
 $midgray:						#a9a9a9;
 $lightgray:						#F9F9F9;
 $border:						#bdc3c7;
+
+$text: #525978;
 
 $green:							#2ecc71;
 $red:							#e74c3c;
@@ -24,6 +26,6 @@ $col-padding-horz:				15px;
 $col-padding-vert:				0px;
 
 // Fonts
-$headline-font:					-apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu;
-$body-font:						-apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu;
+$headline-font:					'Montserrat', sans-serif;
+$body-font:						'Montserrat', sans-serif;
 $fontsize:						1em;

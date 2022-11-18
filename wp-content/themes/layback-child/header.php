@@ -12,34 +12,15 @@
 	<div id="header" class="site-header">
 		<a class="site-logo" href="<?php echo esc_url( home_url() ); ?>">
 			<?php 				
-				$custom_logo_id = get_theme_mod( 'custom_logo' );
-				if($custom_logo_id)
+				if(get_theme_mod('company'))
 				{
-					svgimage($custom_logo_id);
+					echo '<h1>' . get_theme_mod('company') . '</h1>';
 				}
 				else
 				{
-					if(get_theme_mod('company'))
-					{
-						echo '<h1>' . get_theme_mod('company') . '</h1>';
-					}
-					else
-					{
-						echo '<h1>Company #1</h1>';
-					}
+					echo '<h1>Astoya</h1>';
 				}
 			?>
 		</a>
-		<nav class="site-navigation col-md col-lg">
-			<?php 
-				$args = array(
-					'container'			=> 'ul',
-					'theme_location' 	=> 'primary',
-					'menu_class' 		=> 'nav-menu',
-					'menu_id' 			=> 'primary-menu',
-					'after' 			=> '<span></span>'
-				);
-				wp_nav_menu( $args );
-			?>
-		</nav>
+		<div class="est">est. 2018</div>
 	</div>

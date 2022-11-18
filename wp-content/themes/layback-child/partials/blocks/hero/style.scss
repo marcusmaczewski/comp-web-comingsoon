@@ -1,188 +1,288 @@
 @import '../../../lib/css/abstract/_variables.scss';
 
-.block-hero {
-	margin-top: -50px;
-	position: relative;
-	width: 100vw;
-	left: 50%;
-	transform: translateX(-50%);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background-size: cover;
-	background-position: center;
-	height: 70vh;
-	color: #fff;
+.block-hero{
+
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    position: absolute;
+    left: 0;
+    top: 0;
+
+    // add a gradient top that goes from black to transparent
+    &::before{
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 250px;
+        z-index: 11;
+        background: linear-gradient(to bottom, rgba(0,0,0,1) 0%,rgba(0,0,0,0) 100%);
+    }
+
+    &:after{
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.8);
+        z-index: 10;
+    }
+
+    .meteor_container{
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+
+        .meteor{
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: rgb(194, 194, 194);
+            // transition: all 0.5s ease;
+    
+            // &:after{
+            //     // meteor trail
+            //     content: '';
+            //     position: absolute;
+            //     left: -5px;
+            //     top: -5px;
+            //     width: 100%;
+            //     height: 100%;
+            //     background-color: red;
+            //     opacity: .8;
+                
+    
+            //     @keyframes meteorTrail {
+            //         0%{
+            //             transform: scale(0);
+            //         }
+            //         50%{
+            //             transform: scale(1);
+            //         }
+            //         100%{
+            //             transform: scale(0);
+            //         }
+            //     }
+            // }
+    
+            // meteor animation
+            animation: meteor 2s;
+            transition-delay: 10s;
+    
+            
+            @keyframes meteor {
+                0%{
+                    transform: translateX(-100%) translateY(-100%);
+                }
+                100%{
+                    transform:  translate(calc(100vw + 200px), calc(100vh + 200px));
+                }
+            }
+    
+        }
+    }
+
+    .inner{
+        position: absolute;
+        z-index: 20;
+        left: 50%;
+        top: 40%;
+        transform: translate(-50%, -40%);
+        color: white;
+        width: 90%;
+        margin-inline: auto;
+
+        display: grid;
+        place-items: center;
+
+        .title{
+            font-size: 4.75rem;
+            text-align: center;
+            line-height: 5rem;
+            max-width: 65rem;
+            width: 100%;
+            font-weight: bolder;
+
+            @media (max-width: 1100px) {
+                font-size: 3.75rem;
+                line-height: 4rem;
+
+                @media (max-width: 840px) {
+                    font-size: 2.75rem;
+                    line-height: 3rem;
+
+                    @media (max-width: 550px) {
+                        font-size: 1.75rem;
+                        line-height: 2rem;
+
+                        @media (max-width: 410px) {
+                            font-size: 1.25rem;
+                            line-height: 1.5rem;
+                        }
+                    }
+                }
+            }
+            
+            // b{
+            //     color: $primary;
+            // }
+        }
+
+        .actions{
+            margin-top: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+    }
+
+    .products_and_partners{
+        position: absolute;
+        bottom: 200px;
+        left: 50%;
+        transform: translateX(-50%);
+        min-height: 10px;
+        width: 100%;
+        z-index: 30;
+        max-width: $md;
+        padding-inline: $col-padding-horz;
+
+        .title{
+            text-align: center;
+            color: $text;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 15px;
+
+            @media (max-width: 420px) {
+                font-size: .6rem;
+            }
+        }
+
+        .slider{
+            border: 1px solid white;
+            width: 100%;
+            min-height: 50px;
+        }
+    }
+
+    .lines{
+        position: absolute;
+        z-index: 15;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+
+        // Animate each line individually with a delay
+        .line{
+            height: 0%;
+            width: 1px;
+            background-color: white;
+            opacity: .05;
+            
+            // for each line, calculate a random height then animate it and for each line, calculate a random delay
+            animation: animate 1s ease-in-out forwards;
+            animation-delay: calc(0.2s * var(--i));
+
+            &:nth-child(1){
+                --i: 1;
+            }
+
+            &:nth-child(2){
+                --i: 2;
+            }
+
+            &:nth-child(3){
+                --i: 3;
+            }
+
+            &:nth-child(4){
+                --i: 4;
+            }
+
+            &:nth-child(5){
+                --i: 5;
+            }
+
+            &:nth-child(6){
+                --i: 6;
+            }
+
+            &:nth-child(7){
+                --i: 7;
+            }
+
+            &:nth-child(8){
+                --i: 8;
+            }
+
+            &:nth-child(9){
+                --i: 9;
+            }
+
+            &:nth-child(10){
+                --i: 10;
+            }
+
+            // Animate the height of the line
+            @keyframes animate{
+                0%{
+                    height: 0%;
+                }
+                100%{
+                    height: 100%;
+                }
+            }
+
+        }
+    }
 	
-	.slick-list {
-		height: 100%;
-		width: 100%;
+    .earth{
+        transform: translate(-50%, -50%);
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        z-index: 0;
+        width: 100%;
+        max-width: $fullsize;
 
-		.slick-track {
-			height: 100%;
+        // Make image not selectable
+        user-select: none;
 
-			.slick-slide {
-				position: relative;
-				display: flex;
-				justify-content: center;
-				align-items: center;
-				
-				&:after {
-					content: "";
-					position: absolute;
-					top: 0;
-					left: 0;
-					width: 100%;
-					height: 100%;
-					background-color: #000;
-					opacity: .5;
-				}
-			}
-		}
-	}
+        img{
+            animation: spin 600s linear infinite;
 
-	.slick-arrow {
-		background-color: transparent;
-		border: none;
-		color: #fff;
-		font-size: 42px;
-		position: absolute;
-		top: 50%;
-		transform: translateY(-50%);
-		z-index: 10;
-		cursor: pointer;
-		transition: .3s ease;
+            @media (max-width: 600px) {
+                animation: spin 300s linear infinite;
+            }
+        }
 
-		&:hover {
-			color: $primary;
-		}
+        @media (max-width: 600px) {
+            transform: scale(3) translate(-10%, -30%);
+        }
+    }
 
-		&:focus {
-			outline: none;
-		}
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
 
-		&.slick-prev {
-			left: 25px;
-		}
 
-		&.slick-next {
-			right: 25px;
-		}
-	}
 
-	.slick-dots {
-		position: absolute;
-		bottom: 5px;
-		transform: translateX(-50%);
-		left: 50%;
-		z-index: 1;
 
-		button {
-			cursor: pointer;
-
-			&:focus {
-				outline: none;
-			}
-		}
-	}
-
-	@media (max-width: $md) {
-		height: 400px;
-	}
-	
-	@media (max-width: $xs) {
-		height: 300px;
-	}
-
-	video,
-	img {
-		position: absolute;
-		top: 0;
-		left: 0;
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-
-	video {
-		object-position: bottom;
-	}
-
-	.inner {
-		max-width: $fullsize;
-		width: 100%;
-		position: relative;
-		padding: 0 15px;
-		z-index: 2;
-
-		@media (max-width: $xl) {
-    		margin-left: 75px;
-		}
-
-		@media (max-width: $xs) {
-			text-align: center;
-			margin-left: 0;
-		}
-
-		.btn {
-			width: fit-content;
-
-			@media (max-width: $xs) {
-				margin: 0 auto;
-			}
-		}
-	}
-
-	.scroll-down {
-	  	position: absolute;
-	  	bottom: 30px;
-	  	left: 50%;
-	  	transform: translateX(-50%);
-	  	width :35px;
-	  	text-align: center;
-	  	z-index: 76;
-
-	  	@media (max-width: $md) {
-	  		display: none;
-	  	}
-
-		.mouse {
-		  	width: 7px;
-		  	width: 31px;
-		  	height: 46px;
-		  	border: 2px solid #fff;
-		  	border-radius: 15px;
-		  	box-sizing: content-box;
-		  	transition: .3s ease;
-
-		  	&:hover {
-		  		border-color: $primary;
-
-		  		.scroller {
-		  			background-color: $primary;
-		  		}
-		  	}
-
-			.scroller {
-		  		transition: .3s ease;
-			  	width: 7px;
-			  	height: 7px;
-			  	border-radius: 50%;
-			  	background-color: #fff;
-			  	animation-name: scroll;
-			  	animation-duration: 3s;
-			  	animation-timing-function: cubic-bezier(.15,.41,.69,.94);
-			  	animation-iteration-count: infinite;
-			  	margin: 0 auto;
-			}
-		}
-
-		@keyframes scroll {
-		  	0% { transform: translateY(5px);}
-		  	50% { transform: translateY(5px);}
-		  	75% { transform: translateY(20px);}
-		  	80% { transform: translateY(20px);}
-		  	100% { transform: translateY(5px);}
-		}
-	}
 }

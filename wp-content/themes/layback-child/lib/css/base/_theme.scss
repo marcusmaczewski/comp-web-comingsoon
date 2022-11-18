@@ -5,7 +5,7 @@
 body {
 	height: 100vh;
 	font-family: $body-font;
-	background-color: #fff;
+	background-color: black;
 	font-weight: 400;
 	font-size: 0.876em;
 	margin: 0;
@@ -13,7 +13,6 @@ body {
 	line-height: 1.7;
 	color: $darkgray;
 	overflow-x: hidden;
-	font-smoothing: grayscale;
 }
 
 img {

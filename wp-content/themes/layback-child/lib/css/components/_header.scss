@@ -4,9 +4,9 @@
 .site-header {
 	position: relative;
 	z-index: 999;
-	display: flex;
-	justify-content: space-between;
-	padding: 0 15px;
+	display: grid;
+	place-items: center;
+	padding: 15px 15px;
 
 	// .admin-bar & {
 	// 	top: 32px;
@@ -16,6 +16,10 @@
 	------------------------------------------------------*/
 
 	.site-logo{
+		width: fit-content;
+		margin: 5px auto;
+		margin-top: 15px;
+
 		svg,
 		img {
 			display: block;
@@ -24,6 +28,19 @@
 			width: 100%;
 			padding: 0 15px;
 		}
+
+		h1{
+			font-size: 1.2rem;
+			color: white;
+			text-align: center;
+			margin: 0;
+		}
+	}
+
+	.est{
+		color: $text;
+		text-transform: uppercase;
+		letter-spacing: 5px;
 	}
 
 	/* Navigation

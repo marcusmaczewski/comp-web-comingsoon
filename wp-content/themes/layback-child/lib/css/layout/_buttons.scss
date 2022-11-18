@@ -53,4 +53,15 @@
 		width: 100%;
 	}
 
+	&.outlined{
+		background-color: transparent;
+		border: 2px solid $primary;
+		color: $primary;
+
+		&:hover{
+			background-color: $primary;
+			color: #fff;
+		}
+	}
+
 }
